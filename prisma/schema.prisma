@@ -1,0 +1,224 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model parents {
+  id            Int            @id @default(autoincrement())
+  name          String         @db.VarChar(255)
+  mobile_number String         @db.VarChar(15)
+  email         String         @db.VarChar(45)
+  password      String         @db.VarChar(255)
+  is_deleted    Boolean        @default(false)
+  is_active     Boolean        @default(true)
+  created_at    DateTime       @default(now()) @db.Timestamp(0)
+  updated_at    DateTime       @default(now()) @updatedAt @db.Timestamp(0)
+  school_id     Int
+  school        schools        @relation(fields: [school_id], references: [id])
+  students      students[]
+  fees_details  fees_details[]
+
+  @@unique([mobile_number, school_id, is_deleted], name: "parentUniqueIdentifier")
+}
+
+model teachers {
+  id                  Int                 @id @default(autoincrement())
+  name                String              @db.VarChar(255)
+  email               String              @unique @db.VarChar(255)
+  mobile_number       String?             @db.VarChar(15)
+  is_deleted          Boolean             @default(false)
+  is_active           Boolean             @default(true)
+  password            String              @db.VarChar(255)
+  created_at          DateTime            @default(now()) @db.Timestamp(0)
+  updated_at          DateTime            @default(now()) @updatedAt @db.Timestamp(0)
+  need_password_reset Boolean
+  school_id           Int
+  school              schools             @relation(fields: [school_id], references: [id])
+  standards           teacher_standards[]
+  students            students[]
+
+  @@unique([email, school_id, is_deleted], name: "teacherUniqueIdentifier")
+}
+
+model admins {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(255)
+  email        String   @unique @db.VarChar(255)
+  is_deleted   Boolean  @default(false)
+  mobileNumber String?
+  is_active    Boolean  @default(true)
+  password     String   @db.VarChar(255)
+  created_at   DateTime @default(now()) @db.Timestamp(0)
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  school_id    Int
+  school       schools  @relation(fields: [school_id], references: [id])
+
+  @@unique([email, school_id, is_deleted], name: "adminUniqueIdentifier")
+}
+
+model students {
+  id               Int             @id @default(autoincrement())
+  admission_number String          @db.VarChar(50)
+  name             String          @db.VarChar(255)
+  is_deleted       Boolean         @default(false)
+  is_active        Boolean         @default(true)
+  academic_year_id Int?
+  parent_id        Int?
+  standard_id      Int?
+  teacher_id       Int?
+  created_at       DateTime        @default(now()) @db.Timestamp(0)
+  updated_at       DateTime        @default(now()) @updatedAt @db.Timestamp(0)
+  school_id        Int
+  parent           parents?        @relation(fields: [parent_id], references: [id], onDelete: SetNull)
+  standard         standards?      @relation(fields: [standard_id], references: [id], onDelete: SetNull)
+  teacher          teachers?       @relation(fields: [teacher_id], references: [id], onDelete: SetNull)
+  school           schools         @relation(fields: [school_id], references: [id])
+  academic_year    academic_years? @relation(fields: [academic_year_id], references: [id])
+  fees_details     fees_details[]
+
+  @@unique([admission_number, school_id, is_deleted], name: "studentSchoolIdentifier")
+}
+
+model fees_details {
+  id                Int                @id @default(autoincrement())
+  standard_id       Int
+  student_id        Int
+  parent_id         Int
+  academic_year_id  Int
+  is_deleted        Boolean            @default(false)
+  is_active         Boolean            @default(true)
+  total_amount      Float
+  is_paid           Boolean            @default(false)
+  created_at        DateTime           @default(now()) @db.Timestamp(0)
+  updated_at        DateTime           @default(now()) @updatedAt @db.Timestamp(0)
+  school_id         Int
+  student           students           @relation(fields: [student_id], references: [id])
+  standard          standards          @relation(fields: [standard_id], references: [id])
+  parent            parents            @relation(fields: [parent_id], references: [id])
+  school            schools            @relation(fields: [school_id], references: [id])
+  academic_year     academic_years     @relation(fields: [academic_year_id], references: [id])
+  fees_transactions fees_transaction[]
+}
+
+model fees_transaction {
+  id               Int          @id @default(autoincrement())
+  transaction_id   String       @db.VarChar(50)
+  fee_detail_id    Int
+  is_deleted       Boolean      @default(false)
+  is_active        Boolean      @default(true)
+  transaction_date DateTime
+  amount_paid      Float
+  created_at       DateTime     @default(now()) @db.Timestamp(0)
+  updated_at       DateTime     @default(now()) @updatedAt @db.Timestamp(0)
+  school_id        Int
+  fees_detail      fees_details @relation(fields: [fee_detail_id], references: [id])
+  school           schools      @relation(fields: [school_id], references: [id])
+}
+
+model standards {
+  id                Int                 @id @default(autoincrement())
+  section           String              @unique @db.VarChar(10)
+  standard          String              @unique @db.VarChar(10)
+  school_id         Int
+  is_deleted        Boolean             @default(false)
+  is_active         Boolean             @default(true)
+  created_at        DateTime            @default(now()) @db.Timestamp(0)
+  updated_at        DateTime            @default(now()) @updatedAt @db.Timestamp(0)
+  school            schools             @relation(fields: [school_id], references: [id])
+  teacher_standards teacher_standards[]
+  students          students[]
+  fees_details      fees_details[]
+
+  @@unique([section, standard, school_id, is_active, is_deleted], name: "standardsUniqueConstrain")
+}
+
+model teacher_standards {
+  id          Int       @id @default(autoincrement())
+  standard_id Int
+  teacher_id  Int
+  is_deleted  Boolean   @default(false)
+  is_active   Boolean   @default(true)
+  school_id   Int
+  created_at  DateTime  @default(now()) @db.Timestamp(0)
+  updated_at  DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+  standard    standards @relation(fields: [standard_id], references: [id])
+  teacher     teachers  @relation(fields: [teacher_id], references: [id])
+  school      schools   @relation(fields: [school_id], references: [id])
+
+  @@unique([standard_id, teacher_id, is_deleted, school_id], name: "teacherStandardUniqueIdentifiers")
+}
+
+model academic_years {
+  id                 Int            @id @default(autoincrement())
+  academic_year_from DateTime
+  academic_year_to   DateTime
+  school_id          Int
+  is_deleted         Boolean        @default(false)
+  is_active          Boolean        @default(true)
+  created_at         DateTime       @default(now()) @db.Timestamp(0)
+  updated_at         DateTime       @default(now()) @updatedAt @db.Timestamp(0)
+  school             schools        @relation(fields: [school_id], references: [id])
+  fees_details       fees_details[]
+  students           students[]
+
+  @@unique([academic_year_from, academic_year_to, school_id], name: "acdyUniqueIdentifier")
+}
+
+model schools {
+  id                Int                 @id @default(autoincrement())
+  name              String              @unique @db.VarChar(255)
+  address           String              @db.VarChar(255)
+  Street            String              @db.VarChar(100)
+  country_id        Int
+  state_id          Int
+  is_deleted        Boolean             @default(false)
+  is_active         Boolean             @default(true)
+  city              String              @db.VarChar(255)
+  pincode           String              @db.VarChar(10)
+  created_at        DateTime            @default(now()) @db.Timestamp(0)
+  updated_at        DateTime            @default(now()) @updatedAt @db.Timestamp(0)
+  state             states              @relation(fields: [state_id], references: [id])
+  country           countries           @relation(fields: [country_id], references: [id])
+  parents           parents[]
+  teachers          teachers[]
+  admins            admins[]
+  students          students[]
+  standards         standards[]
+  teacher_standards teacher_standards[]
+  fees_details      fees_details[]
+  fees_transactions fees_transaction[]
+  academic_years    academic_years[]
+}
+
+model states {
+  id         Int       @id @default(autoincrement())
+  name       String    @unique
+  code       String    @unique
+  is_deleted Boolean   @default(false)
+  is_active  Boolean   @default(true)
+  tin        String    @unique
+  country_id Int
+  country    countries @relation(fields: [country_id], references: [id])
+  schools    schools[]
+}
+
+model countries {
+  id                   Int       @id @default(autoincrement())
+  name                 String    @unique
+  code                 String    @unique
+  is_deleted           Boolean   @default(false)
+  is_active            Boolean   @default(true)
+  iso_code             String    @unique
+  currency_code        String    @unique
+  currency_symbol      String    @unique
+  currency_symbol_text String
+  states               states[]
+  schools              schools[]
+}
