@@ -1,10 +1,10 @@
 const httpStatus = require("http-status");
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const error = require("../../helper/errorHandler");
-const hashPassword = require("../../helper/hashPassword");
-const validatePassword = require("../../helper/validatePassword");
-const generateAccesToken = require("../../helper/generateAccessToken");
+const error = require("../../helpers/errorHandler");
+const hashPassword = require("../../helpers/hashPassword");
+const validatePassword = require("../../helpers/validatePassword");
+const generateAccesToken = require("../../helpers/generateAccessToken");
 
 exports.createAdmin = async (req, res) => {
   try {

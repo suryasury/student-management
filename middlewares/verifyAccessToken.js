@@ -1,5 +1,5 @@
 let jwt = require("jsonwebtoken");
-let error = require("../helper/errorHandler");
+let error = require("../helpers/errorHandler");
 const httpStatus = require("http-status");
 
 module.exports = (req, res, next) => {
