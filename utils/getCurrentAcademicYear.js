@@ -1,10 +1,10 @@
-const getAcademicYearDetails = () => {
+const getAcademicYearDetails = (startMonth, endMonth) => {
   let currentDate = new Date();
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
 
-  const academicYearStartMonth = 4;
-  const academicYearEndMonth = 3;
+  const academicYearStartMonth = startMonth;
+  const academicYearEndMonth = endMonth;
 
   let academicYearStart, academicYearEnd;
 

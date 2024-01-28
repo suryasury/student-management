@@ -186,29 +186,31 @@ model academic_years {
 }
 
 model schools {
-  id                Int                 @id @default(autoincrement())
-  name              String              @unique @db.VarChar(255)
-  address           String              @db.VarChar(255)
-  Street            String              @db.VarChar(100)
-  country_id        Int
-  state_id          Int
-  is_deleted        Boolean             @default(false)
-  is_active         Boolean             @default(true)
-  city              String              @db.VarChar(255)
-  pincode           String              @db.VarChar(10)
-  created_at        DateTime            @default(now()) @db.Timestamp(0)
-  updated_at        DateTime            @default(now()) @updatedAt @db.Timestamp(0)
-  state             states              @relation(fields: [state_id], references: [id])
-  country           countries           @relation(fields: [country_id], references: [id])
+  id                        Int                 @id @default(autoincrement())
+  name                      String              @unique @db.VarChar(255)
+  address                   String              @db.VarChar(255)
+  Street                    String              @db.VarChar(100)
+  country_id                Int
+  state_id                  Int
+  is_deleted                Boolean             @default(false)
+  academic_year_start_month Int                 @default(4)
+  academic_year_end_month   Int                 @default(3)
+  is_active                 Boolean             @default(true)
+  city                      String              @db.VarChar(255)
+  pincode                   String              @db.VarChar(10)
+  created_at                DateTime            @default(now()) @db.Timestamp(0)
+  updated_at                DateTime            @default(now()) @updatedAt @db.Timestamp(0)
+  state                     states              @relation(fields: [state_id], references: [id])
+  country                   countries           @relation(fields: [country_id], references: [id])
   // parents           parents[]
-  teachers          teachers[]
-  admins            admins[]
-  students          students[]
-  standards         standards[]
-  teacher_standards teacher_standards[]
-  fees_details      fees_details[]
-  fees_transactions fees_transaction[]
-  academic_years    academic_years[]
+  teachers                  teachers[]
+  admins                    admins[]
+  students                  students[]
+  standards                 standards[]
+  teacher_standards         teacher_standards[]
+  fees_details              fees_details[]
+  fees_transactions         fees_transaction[]
+  academic_years            academic_years[]
 }
 
 model states {

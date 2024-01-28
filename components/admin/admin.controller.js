@@ -20,13 +20,19 @@ exports.createAdmin = async (req, res) => {
         password: password,
       },
     });
-    res.status(200).send({
+    res.status(httpStatus.OK).send({
       success: true,
       message: "Admin created successfully.",
       data: result,
     });
   } catch (err) {
     error(err, res);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
   }
 };
 
@@ -43,13 +49,18 @@ exports.createStaffs = async (req, res) => {
         need_password_reset: true,
       },
     });
-    res.status(200).send({
+    res.status(httpStatus.OK).send({
       success: true,
       message: "Staff created successfully.",
       data: result,
     });
   } catch (err) {
-    error(err, res);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
   }
 };
 
@@ -62,13 +73,18 @@ exports.createStandards = async (req, res) => {
         school_id: req.body.school_id,
       },
     });
-    res.status(200).send({
+    res.status(httpStatus.OK).send({
       success: true,
       message: "Admins fetched successfully.",
       data: result,
     });
   } catch (err) {
-    error(err, res);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
   }
 };
 
@@ -77,13 +93,18 @@ exports.getStandardList = async (req, res) => {
     let timeZoneOffset = req.headers.timezoneoffset;
     let result =
       await prisma.$queryRaw`SELECT id, standard, section, CONVERT_TZ(created_at, "+00:00", ${timeZoneOffset}) as created_at FROM standards WHERE is_deleted = 0`;
-    res.status(200).send({
+    res.status(httpStatus.OK).send({
       success: true,
       message: "Standard list fetched successfully",
       data: result,
     });
   } catch (err) {
-    error(err, res);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
   }
 };
 
@@ -92,13 +113,18 @@ exports.getAdminList = async (req, res) => {
     let timeZoneOffset = req.headers.timezoneoffset;
     let result =
       await prisma.$queryRaw`SELECT name, email, id, is_active, CONVERT_TZ(created_at, "+00:00", ${timeZoneOffset}) as created_at FROM admins where is_deleted = 0`;
-    res.status(200).send({
+    res.status(httpStatus.OK).send({
       success: true,
       message: "Admin list fetched successfully",
       data: result,
     });
   } catch (err) {
-    error(err, res);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
   }
 };
 
@@ -106,31 +132,38 @@ exports.getStaffList = async (req, res) => {
   try {
     let timeZoneOffset = req.headers.timezoneoffset;
     let result =
-      await prisma.$queryRaw`SELECT id, name, email, is_active, CONVERT_TZ(created_at, "+00:00", ${timeZoneOffset}) as created_at FROM teachers where is_deleted = 0`;
-    res.status(200).send({
+      await prisma.$queryRaw`SELECT id, name, email, is_active, CONVERT_TZ(created_at, "+00:00", ${timeZoneOffset}) as created_at FROM teachers where is_deleted = 0, is_active = 1, school_id = ${parseInt(
+        req.user.schoolId
+      )}`;
+    res.status(httpStatus.OK).send({
       success: true,
       message: "Staff list fetched successfully.",
       data: result,
     });
   } catch (err) {
-    error(err, res);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
   }
 };
 
-exports.getStaffList = async (req, res) => {
-  try {
-    let timeZoneOffset = req.headers.timezoneoffset;
-    let result =
-      await prisma.$queryRaw`SELECT id, name, email, is_active, CONVERT_TZ(created_at, "+00:00", ${timeZoneOffset}) as created_at FROM teachers where is_deleted = 0`;
-    res.status(200).send({
-      success: true,
-      message: "Staff list fetched successfully.",
-      data: result,
-    });
-  } catch (err) {
-    error(err, res);
-  }
-};
+// exports.getStaffList = async (req, res) => {
+//   try {
+//     let timeZoneOffset = req.headers.timezoneoffset;
+//     let result =
+//       await prisma.$queryRaw`SELECT id, name, email, is_active, CONVERT_TZ(created_at, "+00:00", ${timeZoneOffset}) as created_at FROM teachers where is_deleted = 0`;
+//     res.status(200).send({
+//       success: true,
+//       message: "Staff list fetched successfully.",
+//       data: result,
+//     });
+//   } catch (err) {
+//     error(err, res);
+//   }
+// };
 
 exports.addStaffToStandard = async (req, res) => {
   try {
@@ -141,13 +174,19 @@ exports.addStaffToStandard = async (req, res) => {
         school_id: req.body.schoolId,
       },
     });
-    res.status(200).send({
+    res.status(httpStatus.OK).send({
       success: true,
       message: "Teacher added to the section successfully",
       data: {},
     });
   } catch (err) {
     error(err, res);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
   }
 };
 
@@ -158,19 +197,24 @@ exports.removeStaffFromStandard = async (req, res) => {
         id: parseInt(req.params.standardId),
       },
     });
-    res.status(200).send({
+    res.status(httpStatus.OK).send({
       success: true,
       message: "Teacher removed from the section successfully",
       data: {},
     });
   } catch (err) {
     error(err, res);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
   }
 };
 
 exports.masterUploadStudents = async (req, res) => {
   try {
-    console.log(req.file);
     if (!req.file) {
       return res.status(400).send({
         success: false,
@@ -178,6 +222,12 @@ exports.masterUploadStudents = async (req, res) => {
         data: {},
       });
     }
+    let schoolId = req.user.schoolId;
+    let schoolDetails = await prisma.schools.findFirst({
+      where: {
+        id: schoolId,
+      },
+    });
     const buffer = req.file.buffer;
     const data = buffer.toString();
     const rows = [];
@@ -210,7 +260,10 @@ exports.masterUploadStudents = async (req, res) => {
                     is_deleted: false,
                   },
                 });
-                let academicYearDetails = getCurrentAcademicYear();
+                let academicYearDetails = getCurrentAcademicYear(
+                  schoolDetails.academic_year_start_month,
+                  schoolDetails.academic_year_end_month
+                );
                 let academicYear = await prisma.academic_years.upsert({
                   where: {
                     acdyUniqueIdentifier: {
@@ -352,13 +405,19 @@ exports.masterUploadStudents = async (req, res) => {
           })
         );
       });
-    res.status(200).send({
+    res.status(httpStatus.OK).send({
       success: true,
       message: "Students data uploaded successfully",
       data: {},
     });
   } catch (err) {
     error(err, res);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
   }
 };
 
@@ -410,5 +469,11 @@ exports.login = async (req, res) => {
     }
   } catch (err) {
     error(err, res);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
   }
 };
