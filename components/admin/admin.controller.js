@@ -5,6 +5,8 @@ const error = require("../../helpers/errorHandler");
 const hashPassword = require("../../helpers/hashPassword");
 const validatePassword = require("../../helpers/validatePassword");
 const generateAccesToken = require("../../helpers/generateAccessToken");
+const csv = require("fast-csv");
+const getCurrentAcademicYear = require("../../utils/getCurrentAcademicYear");
 
 exports.createAdmin = async (req, res) => {
   try {
@@ -166,6 +168,200 @@ exports.removeStaffFromStandard = async (req, res) => {
   }
 };
 
+exports.masterUploadStudents = async (req, res) => {
+  try {
+    console.log(req.file);
+    if (!req.file) {
+      return res.status(400).send({
+        success: false,
+        message: "Need a file to upload!!.",
+        data: {},
+      });
+    }
+    const buffer = req.file.buffer;
+    const data = buffer.toString();
+    const rows = [];
+    csv
+      .parseString(data, { headers: true })
+      .on("data", (row) => {
+        rows.push(row);
+      })
+      .on("end", async () => {
+        await Promise.allSettled(
+          rows.map((row) => {
+            new Promise(async (resolve, reject) => {
+              try {
+                let standardData = await prisma.standards.upsert({
+                  where: {
+                    standardsUniqueConstrain: {
+                      standard: row.standard,
+                      section: row.section,
+                      school_id: parseInt(req.user.schoolId),
+                      is_active: true,
+                      is_deleted: false,
+                    },
+                  },
+                  update: { standard: row.standard, section: row.section },
+                  create: {
+                    standard: row.standard,
+                    section: row.section,
+                    school_id: parseInt(req.user.schoolId),
+                    is_active: true,
+                    is_deleted: false,
+                  },
+                });
+                let academicYearDetails = getCurrentAcademicYear();
+                let academicYear = await prisma.academic_years.upsert({
+                  where: {
+                    acdyUniqueIdentifier: {
+                      ...academicYearDetails,
+                      school_id: parseInt(req.user.schoolId),
+                      is_active: true,
+                      is_deleted: false,
+                    },
+                  },
+                  update: {
+                    ...academicYearDetails,
+                  },
+                  create: {
+                    ...academicYearDetails,
+                    school_id: parseInt(req.user.schoolId),
+                  },
+                });
+                let studentDetails = await prisma.students.upsert({
+                  where: {
+                    studentSchoolIdentifier: {
+                      admission_number: row.admissionNo,
+                      school_id: parseInt(req.user.schoolId),
+                      is_deleted: false,
+                      is_active: true,
+                    },
+                  },
+                  update: {
+                    name: row.studentName,
+                    father_name: row.fathersName,
+                    mother_name: row.mothersName,
+                    primary_mobile_no: row.parentsMobileNo,
+                    alternate_mobile_number:
+                      row.parentsAlternateMobileNo || null,
+                    parent_email: row.parentsEmail,
+                    standard_id: standardData.id,
+                    academic_year_id: academicYear.id,
+                    password: hashPassword(row.parentsMobileNo),
+                  },
+                  create: {
+                    name: row.studentName,
+                    father_name: row.fathersName,
+                    mother_name: row.mothersName,
+                    primary_mobile_no: row.parentsMobileNo,
+                    alternate_mobile_number:
+                      row.parentsAlternateMobileNo || null,
+                    parent_email: row.parentsEmail,
+                    standard_id: standardData.id,
+                    password: row.parentsMobileNo,
+                    school_id: parseInt(req.user.schoolId),
+                    admission_number: row.admissionNo,
+                    academic_year_id: academicYear.id,
+                    password: hashPassword(row.parentsMobileNo),
+                  },
+                });
+                let termOne = {};
+                let termTwo = {};
+                let termThree = {};
+                if (row["term-1-fees"]) {
+                  termOne.total_amount = parseInt(row["term-1-fees"]);
+                  termOne.term = 1;
+                  termOne.sc_fees = parseInt(row["term-1-sc"]);
+                  if (row["term-1-dueDate"]) {
+                    let [date, month, year] = row["term-1-dueDate"].split("/");
+                    termOne.due_date = `${year}/${month}/${date}`;
+                  }
+                }
+                if (row["term-2-fees"]) {
+                  termTwo.total_amount = parseInt(row["term-1-fees"]);
+                  termTwo.term = 2;
+                  termTwo.sc_fees = parseInt(row["term-2-sc"]) || 0;
+                  termTwo.due_date = row["term-2-dueDate"];
+                  if (row["term-2-dueDate"]) {
+                    let [date, month, year] = row["term-2-dueDate"].split("/");
+                    termTwo.due_date = `${year}/${month}/${date}`;
+                  }
+                }
+                if (row["term-3-fees"]) {
+                  termThree.total_amount = parseInt(row["term-1-fees"]);
+                  termThree.term = 3;
+                  termThree.sc_fees = parseInt(row["term-2-sc"]) || 0;
+                  termThree.due_date = row["term-3-dueDate"];
+                  if (row["term-3-dueDate"]) {
+                    let [date, month, year] = row["term-3-dueDate"].split("/");
+                    termThree.due_date = `${year}/${month}/${date}`;
+                  }
+                }
+                let feesPromiseArray = [];
+
+                if (Object.keys(termOne).length > 0) {
+                  feesPromiseArray.push(termOne);
+                }
+                if (Object.keys(termTwo).length > 0) {
+                  feesPromiseArray.push(termTwo);
+                }
+                if (Object.keys(termThree).length > 0) {
+                  feesPromiseArray.push(termThree);
+                }
+                await Promise.allSettled(
+                  feesPromiseArray.map((fee) => {
+                    new Promise(async (resolve, reject) => {
+                      try {
+                        await prisma.fees_details.upsert({
+                          where: {
+                            studentFeesUniqueIndex: {
+                              student_id: studentDetails.standard_id,
+                              term: fee.term,
+                              academic_year_id: academicYear.id,
+                              school_id: parseInt(req.user.schoolId),
+                            },
+                          },
+                          update: {
+                            ...fee,
+                            academic_year_id: academicYear.id,
+                            standard_id: standardData.id,
+                            student_id: studentDetails.id,
+                            due_date: new Date(fee.due_date).toISOString(),
+                          },
+                          create: {
+                            ...fee,
+                            school_id: parseInt(req.user.schoolId),
+                            academic_year_id: academicYear.id,
+                            standard_id: standardData.id,
+                            student_id: studentDetails.id,
+                            due_date: new Date(fee.due_date).toISOString(),
+                          },
+                        });
+                        resolve("success");
+                      } catch (err) {
+                        reject(err);
+                      }
+                    });
+                  })
+                );
+                resolve("success");
+              } catch (err) {
+                reject(err);
+              }
+            });
+          })
+        );
+      });
+    res.status(200).send({
+      success: true,
+      message: "Students data uploaded successfully",
+      data: {},
+    });
+  } catch (err) {
+    error(err, res);
+  }
+};
+
 exports.login = async (req, res) => {
   try {
     let email = req.body.email;
@@ -189,6 +385,7 @@ exports.login = async (req, res) => {
           userId: userDetails.id,
           email: userDetails.email,
           userType: "admin",
+          schoolId: userDetails.school_id,
         });
         delete userDetails.password;
         userDetails.accessToken = jwtToken;

@@ -10,23 +10,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model parents {
-  id            Int            @id @default(autoincrement())
-  name          String         @db.VarChar(255)
-  mobile_number String         @db.VarChar(15)
-  email         String         @db.VarChar(45)
-  password      String         @db.VarChar(255)
-  is_deleted    Boolean        @default(false)
-  is_active     Boolean        @default(true)
-  created_at    DateTime       @default(now()) @db.Timestamp(0)
-  updated_at    DateTime       @default(now()) @updatedAt @db.Timestamp(0)
-  school_id     Int
-  school        schools        @relation(fields: [school_id], references: [id])
-  students      students[]
-  fees_details  fees_details[]
+// model parents {
+//   id            Int            @id @default(autoincrement())
+//   name          String         @db.VarChar(255)
+//   mobile_number String         @db.VarChar(15)
+//   email         String         @db.VarChar(45)
+//   password      String         @db.VarChar(255)
+//   is_deleted    Boolean        @default(false)
+//   is_active     Boolean        @default(true)
+//   created_at    DateTime       @default(now()) @db.Timestamp(0)
+//   updated_at    DateTime       @default(now()) @updatedAt @db.Timestamp(0)
+//   school_id     Int
+//   school        schools        @relation(fields: [school_id], references: [id])
+//   students      students[]
+//   fees_details  fees_details[]
 
-  @@unique([mobile_number, school_id, is_deleted], name: "parentUniqueIdentifier")
-}
+//   @@unique([mobile_number, school_id, is_deleted], name: "parentUniqueIdentifier")
+// }
 
 model teachers {
   id                  Int                 @id @default(autoincrement())
@@ -44,7 +44,7 @@ model teachers {
   standards           teacher_standards[]
   students            students[]
 
-  @@unique([email, school_id, is_deleted], name: "teacherUniqueIdentifier")
+  @@unique([email, school_id, is_deleted, is_active], name: "teacherUniqueIdentifier")
 }
 
 model admins {
@@ -60,38 +60,48 @@ model admins {
   school_id    Int
   school       schools  @relation(fields: [school_id], references: [id])
 
-  @@unique([email, school_id, is_deleted], name: "adminUniqueIdentifier")
+  @@unique([email, school_id, is_deleted, is_active], name: "adminUniqueIdentifier")
 }
 
 model students {
-  id               Int             @id @default(autoincrement())
-  admission_number String          @db.VarChar(50)
-  name             String          @db.VarChar(255)
-  is_deleted       Boolean         @default(false)
-  is_active        Boolean         @default(true)
-  academic_year_id Int?
-  parent_id        Int?
-  standard_id      Int?
-  teacher_id       Int?
-  created_at       DateTime        @default(now()) @db.Timestamp(0)
-  updated_at       DateTime        @default(now()) @updatedAt @db.Timestamp(0)
-  school_id        Int
-  parent           parents?        @relation(fields: [parent_id], references: [id], onDelete: SetNull)
-  standard         standards?      @relation(fields: [standard_id], references: [id], onDelete: SetNull)
-  teacher          teachers?       @relation(fields: [teacher_id], references: [id], onDelete: SetNull)
-  school           schools         @relation(fields: [school_id], references: [id])
-  academic_year    academic_years? @relation(fields: [academic_year_id], references: [id])
-  fees_details     fees_details[]
+  id                      Int             @id @default(autoincrement())
+  admission_number        String          @db.VarChar(50)
+  name                    String          @db.VarChar(255)
+  primary_mobile_no       String          @db.VarChar(15)
+  alternate_mobile_number String?         @db.VarChar(15)
+  father_name             String          @db.VarChar(100)
+  mother_name             String?         @db.VarChar(100)
+  parent_email            String?         @db.VarChar(100)
+  email                   String?         @db.VarChar(45)
+  password                String          @db.VarChar(255)
+  is_deleted              Boolean         @default(false)
+  is_active               Boolean         @default(true)
+  academic_year_id        Int?
+  // parent_id               Int?
+  standard_id             Int?
+  teacher_id              Int?
+  created_at              DateTime        @default(now()) @db.Timestamp(0)
+  updated_at              DateTime        @default(now()) @updatedAt @db.Timestamp(0)
+  school_id               Int
+  // parent           parents?        @relation(fields: [parent_id], references: [id], onDelete: SetNull)
+  standard                standards?      @relation(fields: [standard_id], references: [id], onDelete: SetNull)
+  teacher                 teachers?       @relation(fields: [teacher_id], references: [id], onDelete: SetNull)
+  school                  schools         @relation(fields: [school_id], references: [id])
+  academic_year           academic_years? @relation(fields: [academic_year_id], references: [id])
+  fees_details            fees_details[]
 
-  @@unique([admission_number, school_id, is_deleted], name: "studentSchoolIdentifier")
+  @@unique([admission_number, school_id, is_deleted, is_active], name: "studentSchoolIdentifier")
 }
 
 model fees_details {
   id                Int                @id @default(autoincrement())
   standard_id       Int
   student_id        Int
-  parent_id         Int
-  academic_year_id  Int
+  // parent_id         Int
+  term              Int
+  academic_year_id  Int?
+  due_date          String
+  sc_fees           Float
   is_deleted        Boolean            @default(false)
   is_active         Boolean            @default(true)
   total_amount      Float
@@ -101,10 +111,12 @@ model fees_details {
   school_id         Int
   student           students           @relation(fields: [student_id], references: [id])
   standard          standards          @relation(fields: [standard_id], references: [id])
-  parent            parents            @relation(fields: [parent_id], references: [id])
+  // parent            parents            @relation(fields: [parent_id], references: [id])
   school            schools            @relation(fields: [school_id], references: [id])
-  academic_year     academic_years     @relation(fields: [academic_year_id], references: [id])
+  academic_year     academic_years?    @relation(fields: [academic_year_id], references: [id])
   fees_transactions fees_transaction[]
+
+  @@unique([academic_year_id, term, student_id, school_id], name: "studentFeesUniqueIndex")
 }
 
 model fees_transaction {
@@ -124,8 +136,8 @@ model fees_transaction {
 
 model standards {
   id                Int                 @id @default(autoincrement())
-  section           String              @unique @db.VarChar(10)
-  standard          String              @unique @db.VarChar(10)
+  section           String              @db.VarChar(10)
+  standard          String              @db.VarChar(10)
   school_id         Int
   is_deleted        Boolean             @default(false)
   is_active         Boolean             @default(true)
@@ -140,35 +152,37 @@ model standards {
 }
 
 model teacher_standards {
-  id          Int       @id @default(autoincrement())
-  standard_id Int
+  id          Int        @id @default(autoincrement())
+  standard_id Int?
   teacher_id  Int
-  is_deleted  Boolean   @default(false)
-  is_active   Boolean   @default(true)
+  is_deleted  Boolean    @default(false)
+  is_active   Boolean    @default(true)
   school_id   Int
-  created_at  DateTime  @default(now()) @db.Timestamp(0)
-  updated_at  DateTime  @default(now()) @updatedAt @db.Timestamp(0)
-  standard    standards @relation(fields: [standard_id], references: [id])
-  teacher     teachers  @relation(fields: [teacher_id], references: [id])
-  school      schools   @relation(fields: [school_id], references: [id])
+  created_at  DateTime   @default(now()) @db.Timestamp(0)
+  updated_at  DateTime   @default(now()) @updatedAt @db.Timestamp(0)
+  standard    standards? @relation(fields: [standard_id], references: [id])
+  teacher     teachers   @relation(fields: [teacher_id], references: [id])
+  school      schools    @relation(fields: [school_id], references: [id])
 
   @@unique([standard_id, teacher_id, is_deleted, school_id], name: "teacherStandardUniqueIdentifiers")
 }
 
 model academic_years {
-  id                 Int            @id @default(autoincrement())
-  academic_year_from DateTime
-  academic_year_to   DateTime
-  school_id          Int
-  is_deleted         Boolean        @default(false)
-  is_active          Boolean        @default(true)
-  created_at         DateTime       @default(now()) @db.Timestamp(0)
-  updated_at         DateTime       @default(now()) @updatedAt @db.Timestamp(0)
-  school             schools        @relation(fields: [school_id], references: [id])
-  fees_details       fees_details[]
-  students           students[]
+  id                  Int            @id @default(autoincrement())
+  academic_year_from  Int
+  academic_year_to    Int
+  academic_month_from Int
+  academic_month_to   Int
+  school_id           Int
+  is_deleted          Boolean        @default(false)
+  is_active           Boolean        @default(true)
+  created_at          DateTime       @default(now()) @db.Timestamp(0)
+  updated_at          DateTime       @default(now()) @updatedAt @db.Timestamp(0)
+  school              schools        @relation(fields: [school_id], references: [id])
+  fees_details        fees_details[]
+  students            students[]
 
-  @@unique([academic_year_from, academic_year_to, school_id], name: "acdyUniqueIdentifier")
+  @@unique([academic_year_from, academic_year_to, school_id, academic_month_from, academic_month_to, is_deleted, is_active], name: "acdyUniqueIdentifier")
 }
 
 model schools {
@@ -186,7 +200,7 @@ model schools {
   updated_at        DateTime            @default(now()) @updatedAt @db.Timestamp(0)
   state             states              @relation(fields: [state_id], references: [id])
   country           countries           @relation(fields: [country_id], references: [id])
-  parents           parents[]
+  // parents           parents[]
   teachers          teachers[]
   admins            admins[]
   students          students[]
