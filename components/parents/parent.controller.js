@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 const error = require("../../helpers/errorHandler");
 const validatePassword = require("../../helpers/validatePassword");
 const generateAccesToken = require("../../helpers/generateAccessToken");
+const hashPassword = require("../../helpers/hashPassword");
 
 exports.login = async (req, res) => {
   try {
@@ -57,6 +58,11 @@ exports.login = async (req, res) => {
     }
   } catch (err) {
     error(err, res);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Internal server error. Please try again",
+      success: false,
+      data: {},
+    });
   }
 };
 
@@ -77,9 +83,65 @@ exports.getFeesDetails = async (req, res) => {
       },
     });
     res.status(httpStatus.OK).send({
-      message: "User not found or invaild user",
-      success: false,
+      message: "Fees details fetched successfully.",
+      success: true,
       data: feesDetails,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Internal server error. Please try again",
+      success: false,
+      data: {},
+    });
+  }
+};
+
+exports.getStudentDetails = async (req, res) => {
+  try {
+    let studentId = parseInt(req.user.userId);
+    let userDetails = await prisma.students.findFirst({
+      where: {
+        id: studentId,
+      },
+      include: {
+        school: true,
+        standard: true,
+      },
+    });
+    delete userDetails.password;
+    res.status(httpStatus.OK).send({
+      message: "User details fetched successfully.",
+      success: true,
+      data: userDetails,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Internal server error. Please try again",
+      success: false,
+      data: {},
+    });
+  }
+};
+
+exports.resetPasssword = async (req, res) => {
+  try {
+    let studentId = parseInt(req.user.userId);
+    let password = req.body.password;
+    let hashedPassword = hashPassword(password);
+    await prisma.students.update({
+      where: {
+        id: studentId,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Password resetted successfully.",
+      success: true,
+      data: {},
     });
   } catch (err) {
     console.log(err);
