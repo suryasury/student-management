@@ -27,7 +27,7 @@ const errorHandler = (error, res) => {
     };
   }
   errorResponse.success = false;
-  res.status(statusCode).send(errorResponse);
+  return res.status(statusCode).send(errorResponse);
 };
 
 module.exports = errorHandler;

@@ -34,20 +34,36 @@ module.exports = (req, res, next) => {
     }
     let jwtData = jwt.verify(token, jwtSecret, (err, payload) => {
       if (err) {
-        return error(
-          {
-            statusCode: httpStatus.UNAUTHORIZED,
-            message: "Session expired. Please login again",
-            error: err,
-          },
-          res
-        );
+        return {
+          error: err,
+          data: {},
+          success: false,
+        };
       }
-      return payload;
+      return { data: payload, success: true };
     });
-    req.user = JSON.parse(jwtData.data);
+    if (jwtData.success) {
+      req.user = JSON.parse(jwtData.data.data);
+    } else {
+      return error(
+        {
+          statusCode: httpStatus.UNAUTHORIZED,
+          message: "Session expired. Please login again",
+          error: jwtData.error,
+        },
+        res
+      );
+    }
     next();
   } catch (err) {
     error(err, res);
+    return error(
+      {
+        statusCode: httpStatus.UNAUTHORIZED,
+        message: "Internal server error. Please try again after sometime",
+        error: err,
+      },
+      res
+    );
   }
 };

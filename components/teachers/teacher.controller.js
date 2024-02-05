@@ -5,6 +5,7 @@ const error = require("../../helpers/errorHandler");
 const validatePassword = require("../../helpers/validatePassword");
 const generateAccesToken = require("../../helpers/generateAccessToken");
 const csv = require("fast-csv");
+const hashPassword = require("../../helpers/hashPassword");
 
 exports.login = async (req, res) => {
   try {
@@ -37,31 +38,34 @@ exports.login = async (req, res) => {
         });
         delete userDetails.password;
         userDetails.accessToken = jwtToken;
-        res.status(httpStatus.OK).send({
+        return res.status(httpStatus.OK).send({
           message: "Logged in successfully",
           success: true,
           data: userDetails,
         });
       } else {
-        res.status(httpStatus.UNAUTHORIZED).send({
+        return res.status(httpStatus.UNAUTHORIZED).send({
           message: "Invalid credentials. Please try again",
           success: true,
           data: {},
         });
       }
     } else {
-      res.status(httpStatus.NOT_FOUND).send({
+      return res.status(httpStatus.NOT_FOUND).send({
         message: "User not found or invaild user",
         success: false,
         data: {},
       });
     }
   } catch (err) {
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      message: "Internal server error. Please try again after sometimes",
-      success: false,
-      data: {},
-    });
+    return error(
+      {
+        statusCode: httpStatus.UNAUTHORIZED,
+        message: "Internal server error. Please try again after sometime",
+        error: err,
+      },
+      res
+    );
   }
 };
 
@@ -98,11 +102,14 @@ exports.getStaffSections = async (req, res) => {
     });
   } catch (err) {
     console.log("Error", err);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      message: "Internal server error. Please try again after sometimes",
-      success: false,
-      data: {},
-    });
+    return error(
+      {
+        statusCode: httpStatus.UNAUTHORIZED,
+        message: "Internal server error. Please try again after sometime",
+        error: err,
+      },
+      res
+    );
   }
 };
 
@@ -111,6 +118,7 @@ exports.getStaffSectionStudents = async (req, res) => {
     let sectionId = parseInt(req.params.sectionId);
     let termId = req.query.term ? parseInt(req.query.term) : "";
     let paymentStatus = req.query.status || "";
+    let searchFilter = req.query.search || "";
     let whereConditions = {
       standard_id: sectionId,
       is_active: true,
@@ -136,10 +144,29 @@ exports.getStaffSectionStudents = async (req, res) => {
         },
       };
     }
+    if (searchFilter) {
+      whereConditions.OR = [
+        {
+          admission_number: {
+            startsWith: searchFilter,
+          },
+        },
+        {
+          name: {
+            contains: searchFilter,
+          },
+        },
+      ];
+    }
     let result = await prisma.students.findMany({
       where: whereConditions,
       include: {
         standard: true,
+        fees_details: {
+          include: {
+            fees_transactions: true,
+          },
+        },
       },
       orderBy: {
         name: "asc",
@@ -152,11 +179,14 @@ exports.getStaffSectionStudents = async (req, res) => {
     });
   } catch (err) {
     console.log("error", err);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      message: "Internal server error. Please try again after sometimes",
-      success: false,
-      data: {},
-    });
+    return error(
+      {
+        statusCode: httpStatus.UNAUTHORIZED,
+        message: "Internal server error. Please try again after sometime",
+        error: err,
+      },
+      res
+    );
   }
 };
 
@@ -199,4 +229,134 @@ exports.getStaffStudentDetails = async (req, res) => {
       data: {},
     });
   }
+};
+
+exports.getUserDetails = async (req, res) => {
+  try {
+    let userId = parseInt(req.user.userId);
+    let result = await prisma.students.findUnique({
+      where: {
+        id: userId,
+      },
+      include: {
+        school: true,
+      },
+    });
+    delete result.password;
+    res.status(httpStatus.OK).send({
+      message: "User details fetched successfully",
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    console.log("error", err);
+    return error(
+      {
+        statusCode: httpStatus.UNAUTHORIZED,
+        message: "Internal server error. Please try again after sometime",
+        error: err,
+      },
+      res
+    );
+  }
+};
+
+exports.getSectionDetails = async (req, res) => {
+  try {
+    let sectionId = parseInt(req.params.sectionId);
+    let result = await prisma.standards.findUnique({
+      where: {
+        id: sectionId,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Section detail fetched successfully",
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    console.log("Error", err);
+    return error(
+      {
+        statusCode: httpStatus.UNAUTHORIZED,
+        message: "Internal server error. Please try again after sometime",
+        error: err,
+      },
+      res
+    );
+  }
+};
+
+exports.getStudentDetails = async (req, res) => {
+  try {
+    let studentId = parseInt(req.params.studentId);
+    let userDetails = await prisma.students.findFirst({
+      where: {
+        id: studentId,
+      },
+      include: {
+        standard: true,
+        fees_details: {
+          include: {
+            fees_transactions: true,
+          },
+          orderBy: {
+            term: "asc",
+          },
+        },
+      },
+    });
+    delete userDetails.password;
+    res.status(httpStatus.OK).send({
+      message: "Student details fetched successfully.",
+      success: true,
+      data: userDetails,
+    });
+  } catch (err) {
+    console.log(err);
+    return error(
+      {
+        statusCode: httpStatus.UNAUTHORIZED,
+        message: "Internal server error. Please try again after sometime",
+        error: err,
+      },
+      res
+    );
+  }
+};
+
+exports.resetPasswordWithAuth = async (req, res) => {
+  try {
+    let teacherId = parseInt(req.user.userId);
+    let password = req.body.password;
+    let hashedPassword = hashPassword(password);
+    await prisma.teachers.update({
+      where: {
+        id: teacherId,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Password resetted successfully.",
+      success: true,
+      data: {},
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: "Internal server error. Please try again",
+      success: false,
+      data: {},
+    });
+  }
+};
+
+exports.forgotPassword = (req, res) => {
+  //implement forget password action
+};
+
+exports.resetPassword = (req, res) => {
+  //implement reset password action
 };

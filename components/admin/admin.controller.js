@@ -150,21 +150,6 @@ exports.getStaffList = async (req, res) => {
   }
 };
 
-// exports.getStaffList = async (req, res) => {
-//   try {
-//     let timeZoneOffset = req.headers.timezoneoffset;
-//     let result =
-//       await prisma.$queryRaw`SELECT id, name, email, is_active, CONVERT_TZ(created_at, "+00:00", ${timeZoneOffset}) as created_at FROM teachers where is_deleted = 0`;
-//     res.status(200).send({
-//       success: true,
-//       message: "Staff list fetched successfully.",
-//       data: result,
-//     });
-//   } catch (err) {
-//     error(err, res);
-//   }
-// };
-
 exports.addStaffToStandard = async (req, res) => {
   try {
     await prisma.teacher_standards.create({
@@ -251,10 +236,13 @@ exports.masterUploadStudents = async (req, res) => {
                       is_deleted: false,
                     },
                   },
-                  update: { standard: row.standard, section: row.section },
+                  update: {
+                    standard: row.standard.toUpperCase(),
+                    section: row.section.toUpperCase(),
+                  },
                   create: {
-                    standard: row.standard,
-                    section: row.section,
+                    standard: row.standard.toUpperCase(),
+                    section: row.section.toUpperCase(),
                     school_id: parseInt(req.user.schoolId),
                     is_active: true,
                     is_deleted: false,
@@ -331,20 +319,18 @@ exports.masterUploadStudents = async (req, res) => {
                   }
                 }
                 if (row["term-2-fees"]) {
-                  termTwo.total_amount = parseInt(row["term-1-fees"]);
+                  termTwo.total_amount = parseInt(row["term-2-fees"]);
                   termTwo.term = 2;
                   termTwo.sc_fees = parseInt(row["term-2-sc"]) || 0;
-                  termTwo.due_date = row["term-2-dueDate"];
                   if (row["term-2-dueDate"]) {
                     let [date, month, year] = row["term-2-dueDate"].split("/");
                     termTwo.due_date = `${year}/${month}/${date}`;
                   }
                 }
                 if (row["term-3-fees"]) {
-                  termThree.total_amount = parseInt(row["term-1-fees"]);
+                  termThree.total_amount = parseInt(row["term-3-fees"]);
                   termThree.term = 3;
-                  termThree.sc_fees = parseInt(row["term-2-sc"]) || 0;
-                  termThree.due_date = row["term-3-dueDate"];
+                  termThree.sc_fees = parseInt(row["term-3-sc"]) || 0;
                   if (row["term-3-dueDate"]) {
                     let [date, month, year] = row["term-3-dueDate"].split("/");
                     termThree.due_date = `${year}/${month}/${date}`;
@@ -477,3 +463,18 @@ exports.login = async (req, res) => {
     });
   }
 };
+
+// exports.getStaffList = async (req, res) => {
+//   try {
+//     let timeZoneOffset = req.headers.timezoneoffset;
+//     let result =
+//       await prisma.$queryRaw`SELECT id, name, email, is_active, CONVERT_TZ(created_at, "+00:00", ${timeZoneOffset}) as created_at FROM teachers where is_deleted = 0`;
+//     res.status(200).send({
+//       success: true,
+//       message: "Staff list fetched successfully.",
+//       data: result,
+//     });
+//   } catch (err) {
+//     error(err, res);
+//   }
+// };

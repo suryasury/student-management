@@ -19,5 +19,30 @@ router.get(
   verifyAccessToken,
   teachersController.getStaffStudentDetails
 );
-
+router.get("/details", verifyAccessToken, teachersController.getUserDetails);
+router.get(
+  "/section/details/:sectionId",
+  verifyAccessToken,
+  teachersController.getSectionDetails
+);
+router.get(
+  "/student/details/:studentId",
+  verifyAccessToken,
+  teachersController.getStudentDetails
+);
+router.post(
+  "/forgot-password",
+  verifyAccessToken,
+  teachersController.forgotPassword
+);
+router.patch(
+  "/reset-password",
+  verifyAccessToken,
+  teachersController.resetPassword
+);
+router.patch(
+  "/password/reset",
+  verifyAccessToken,
+  teachersController.resetPasswordWithAuth
+);
 module.exports = router;
