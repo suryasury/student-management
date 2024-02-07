@@ -30,16 +30,8 @@ router.get(
   verifyAccessToken,
   teachersController.getStudentDetails
 );
-router.post(
-  "/forgot-password",
-  verifyAccessToken,
-  teachersController.forgotPassword
-);
-router.patch(
-  "/reset-password",
-  verifyAccessToken,
-  teachersController.resetPassword
-);
+router.post("/forgot-password", teachersController.forgotPassword);
+router.patch("/reset-password/:token", teachersController.resetPassword);
 router.patch(
   "/password/reset",
   verifyAccessToken,
