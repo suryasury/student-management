@@ -1398,9 +1398,13 @@ exports.getStudentList = async (req, res) => {
         include: {
           standard: true,
           fees_details: {
-            where: {
-              academic_year_id: academicYear.id,
-            },
+            ...(academicYear?.id
+              ? {
+                  where: {
+                    academic_year_id: academicYear.id,
+                  },
+                }
+              : {}),
             include: {
               fees_transactions: true,
             },
@@ -1678,7 +1682,7 @@ exports.login = async (req, res) => {
     });
     if (userDetails) {
       if (!userDetails.is_active) {
-        res
+        return res
           .status(httpStatus.FORBIDDEN)
           .send({ message: "Access denied", success: false, data: {} });
       }
@@ -1692,33 +1696,34 @@ exports.login = async (req, res) => {
         });
         delete userDetails.password;
         userDetails.accessToken = jwtToken;
-        res.status(httpStatus.OK).send({
+        return res.status(httpStatus.OK).send({
           message: "Logged in successfully",
           success: true,
           data: userDetails,
         });
       } else {
-        res.status(httpStatus.UNAUTHORIZED).send({
+        return res.status(httpStatus.UNAUTHORIZED).send({
           message: "Invalid credentials. Please try again",
           success: true,
           data: {},
         });
       }
     } else {
-      res.status(httpStatus.NOT_FOUND).send({
+      return res.status(httpStatus.NOT_FOUND).send({
         message: "User not found or invaild user",
         success: false,
         data: {},
       });
     }
   } catch (err) {
+    console.log("err", err);
     error(err, res);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      success: true,
-      message: "Internal server error. Please try again later.",
-      data: {},
-      error: err,
-    });
+    // res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+    //   success: true,
+    //   message: "Internal server error. Please try again later.",
+    //   data: {},
+    //   error: err,
+    // });
   }
 };
 
