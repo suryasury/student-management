@@ -32,6 +32,7 @@ model teachers {
   id                  Int                 @id @default(autoincrement())
   name                String              @db.VarChar(255)
   email               String              @unique @db.VarChar(255)
+  teacherId           String              @db.VarChar(30)
   mobile_number       String?             @db.VarChar(15)
   is_deleted          Boolean             @default(false)
   is_active           Boolean             @default(true)
@@ -44,7 +45,8 @@ model teachers {
   standards           teacher_standards[]
   students            students[]
 
-  @@unique([email, school_id, is_deleted, is_active], name: "teacherUniqueIdentifier")
+  // @@unique([email, school_id, is_deleted, is_active], name: "teacherUniqueIdentifier")
+  @@unique([email, school_id, teacherId], name: "teacherUniqueIdentifiers")
 }
 
 model admins {
@@ -60,7 +62,7 @@ model admins {
   school_id    Int
   school       schools  @relation(fields: [school_id], references: [id])
 
-  @@unique([email, school_id, is_deleted, is_active], name: "adminUniqueIdentifier")
+  @@unique([email, school_id], name: "adminUniqueIdentifier")
 }
 
 model students {
@@ -90,7 +92,7 @@ model students {
   academic_year           academic_years? @relation(fields: [academic_year_id], references: [id])
   fees_details            fees_details[]
 
-  @@unique([admission_number, school_id, is_deleted, is_active], name: "studentSchoolIdentifier")
+  @@unique([admission_number, school_id], name: "studentSchoolIdentifier")
 }
 
 model fees_details {
@@ -101,6 +103,8 @@ model fees_details {
   term              Int
   academic_year_id  Int?
   due_date          String
+  payed_through     String?            @db.VarChar(50) //Online, Offline
+  transaction_id    String?            @unique @db.VarChar(64)
   sc_fees           Float
   is_deleted        Boolean            @default(false)
   is_active         Boolean            @default(true)
@@ -120,40 +124,49 @@ model fees_details {
 }
 
 model fees_transaction {
-  id               Int          @id @default(autoincrement())
-  transaction_id   String       @db.VarChar(50)
-  fee_detail_id    Int
-  is_deleted       Boolean      @default(false)
-  is_active        Boolean      @default(true)
-  transaction_date DateTime
-  amount_paid      Float
-  created_at       DateTime     @default(now()) @db.Timestamp(0)
-  updated_at       DateTime     @default(now()) @updatedAt @db.Timestamp(0)
-  school_id        Int
-  fees_detail      fees_details @relation(fields: [fee_detail_id], references: [id])
-  school           schools      @relation(fields: [school_id], references: [id])
+  id                        Int          @id @default(autoincrement())
+  transaction_id            String?      @db.VarChar(50)
+  pg_transaction_id         String?      @db.VarChar(50)
+  pg_service_transaction_id String?      @db.VarChar(50)
+  bank_transaction_id       String?      @db.VarChar(50)
+  pg_authorization_code     String?      @db.VarChar(50)
+  client_transaction_id     String?      @db.VarChar(50)
+  arn_id                    String?      @db.VarChar(50)
+  bank_id                   String?      @db.VarChar(50)
+  fee_detail_id             Int
+  is_deleted                Boolean      @default(false)
+  is_active                 Boolean      @default(true)
+  transaction_date          DateTime
+  utr_number                String?      @db.VarChar(50)
+  payment_mode              String       @db.VarChar(50)
+  amount_paid               Float
+  created_at                DateTime     @default(now()) @db.Timestamp(0)
+  updated_at                DateTime     @default(now()) @updatedAt @db.Timestamp(0)
+  school_id                 Int
+  fees_detail               fees_details @relation(fields: [fee_detail_id], references: [id])
+  school                    schools      @relation(fields: [school_id], references: [id])
 }
 
 model standards {
-  id                Int                 @id @default(autoincrement())
-  section           String              @db.VarChar(10)
-  standard          String              @db.VarChar(10)
+  id                Int                @id @default(autoincrement())
+  section           String             @db.VarChar(10)
+  standard          String             @db.VarChar(10)
   school_id         Int
-  is_deleted        Boolean             @default(false)
-  is_active         Boolean             @default(true)
-  created_at        DateTime            @default(now()) @db.Timestamp(0)
-  updated_at        DateTime            @default(now()) @updatedAt @db.Timestamp(0)
-  school            schools             @relation(fields: [school_id], references: [id])
-  teacher_standards teacher_standards[]
+  is_deleted        Boolean            @default(false)
+  is_active         Boolean            @default(true)
+  created_at        DateTime           @default(now()) @db.Timestamp(0)
+  updated_at        DateTime           @default(now()) @updatedAt @db.Timestamp(0)
+  school            schools            @relation(fields: [school_id], references: [id])
+  teacher_standards teacher_standards?
   students          students[]
   fees_details      fees_details[]
 
-  @@unique([section, standard, school_id, is_active, is_deleted], name: "standardsUniqueConstrain")
+  @@unique([section, standard, school_id], name: "standardsUniqueConstrain")
 }
 
 model teacher_standards {
   id          Int        @id @default(autoincrement())
-  standard_id Int?
+  standard_id Int?       @unique
   teacher_id  Int
   is_deleted  Boolean    @default(false)
   is_active   Boolean    @default(true)
@@ -164,7 +177,8 @@ model teacher_standards {
   teacher     teachers   @relation(fields: [teacher_id], references: [id])
   school      schools    @relation(fields: [school_id], references: [id])
 
-  @@unique([standard_id, teacher_id, is_deleted, school_id], name: "teacherStandardUniqueIdentifiers")
+  @@unique([standard_id, teacher_id, school_id], name: "teacherStandardUniqueIdentifiers")
+  @@unique([standard_id, school_id], name: "teacherSchoolIdentifiers")
 }
 
 model academic_years {
@@ -182,7 +196,7 @@ model academic_years {
   fees_details        fees_details[]
   students            students[]
 
-  @@unique([academic_year_from, academic_year_to, school_id, academic_month_from, academic_month_to, is_deleted, is_active], name: "acdyUniqueIdentifier")
+  @@unique([academic_year_from, academic_year_to, school_id, academic_month_from, academic_month_to], name: "acdyUniqueIdentifier")
 }
 
 model schools {

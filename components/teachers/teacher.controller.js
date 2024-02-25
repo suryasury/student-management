@@ -293,6 +293,11 @@ exports.getSectionDetails = async (req, res) => {
 exports.getStudentDetails = async (req, res) => {
   try {
     let studentId = parseInt(req.params.studentId);
+    let academicYear = await prisma.academic_years.findFirst({
+      orderBy: {
+        created_at: "desc",
+      },
+    });
     let userDetails = await prisma.students.findFirst({
       where: {
         id: studentId,
@@ -300,6 +305,9 @@ exports.getStudentDetails = async (req, res) => {
       include: {
         standard: true,
         fees_details: {
+          where: {
+            academic_year_id: academicYear.id,
+          },
           include: {
             fees_transactions: true,
           },

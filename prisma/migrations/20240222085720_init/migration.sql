@@ -31,7 +31,7 @@ CREATE TABLE `admins` (
     `school_id` INTEGER NOT NULL,
 
     UNIQUE INDEX `admins_email_key`(`email`),
-    UNIQUE INDEX `admins_email_school_id_is_deleted_is_active_key`(`email`, `school_id`, `is_deleted`, `is_active`),
+    UNIQUE INDEX `admins_email_school_id_key`(`email`, `school_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -56,7 +56,7 @@ CREATE TABLE `students` (
     `updated_at` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
     `school_id` INTEGER NOT NULL,
 
-    UNIQUE INDEX `students_admission_number_school_id_is_deleted_is_active_key`(`admission_number`, `school_id`, `is_deleted`, `is_active`),
+    UNIQUE INDEX `students_admission_number_school_id_key`(`admission_number`, `school_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -68,6 +68,8 @@ CREATE TABLE `fees_details` (
     `term` INTEGER NOT NULL,
     `academic_year_id` INTEGER NULL,
     `due_date` VARCHAR(191) NOT NULL,
+    `payed_through` VARCHAR(50) NULL,
+    `transaction_id` VARCHAR(64) NULL,
     `sc_fees` DOUBLE NOT NULL,
     `is_deleted` BOOLEAN NOT NULL DEFAULT false,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
@@ -77,6 +79,7 @@ CREATE TABLE `fees_details` (
     `updated_at` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
     `school_id` INTEGER NOT NULL,
 
+    UNIQUE INDEX `fees_details_transaction_id_key`(`transaction_id`),
     UNIQUE INDEX `fees_details_academic_year_id_term_student_id_school_id_key`(`academic_year_id`, `term`, `student_id`, `school_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -84,11 +87,20 @@ CREATE TABLE `fees_details` (
 -- CreateTable
 CREATE TABLE `fees_transaction` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `transaction_id` VARCHAR(50) NOT NULL,
+    `transaction_id` VARCHAR(50) NULL,
+    `pg_transaction_id` VARCHAR(50) NULL,
+    `pg_service_transaction_id` VARCHAR(50) NULL,
+    `bank_transaction_id` VARCHAR(50) NULL,
+    `pg_authorization_code` VARCHAR(50) NULL,
+    `client_transaction_id` VARCHAR(50) NULL,
+    `arn_id` VARCHAR(50) NULL,
+    `bank_id` VARCHAR(50) NULL,
     `fee_detail_id` INTEGER NOT NULL,
     `is_deleted` BOOLEAN NOT NULL DEFAULT false,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
     `transaction_date` DATETIME(3) NOT NULL,
+    `utr_number` VARCHAR(50) NULL,
+    `payment_mode` VARCHAR(50) NOT NULL,
     `amount_paid` DOUBLE NOT NULL,
     `created_at` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
     `updated_at` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
@@ -108,14 +120,14 @@ CREATE TABLE `standards` (
     `created_at` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
     `updated_at` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
 
-    UNIQUE INDEX `standards_section_standard_school_id_is_active_is_deleted_key`(`section`, `standard`, `school_id`, `is_active`, `is_deleted`),
+    UNIQUE INDEX `standards_section_standard_school_id_key`(`section`, `standard`, `school_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
 CREATE TABLE `teacher_standards` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `standard_id` INTEGER NOT NULL,
+    `standard_id` INTEGER NULL,
     `teacher_id` INTEGER NOT NULL,
     `is_deleted` BOOLEAN NOT NULL DEFAULT false,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
@@ -123,7 +135,7 @@ CREATE TABLE `teacher_standards` (
     `created_at` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
     `updated_at` TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP(0),
 
-    UNIQUE INDEX `teacher_standards_standard_id_teacher_id_is_deleted_school_i_key`(`standard_id`, `teacher_id`, `is_deleted`, `school_id`),
+    UNIQUE INDEX `teacher_standards_standard_id_teacher_id_school_id_key`(`standard_id`, `teacher_id`, `school_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -153,6 +165,8 @@ CREATE TABLE `schools` (
     `country_id` INTEGER NOT NULL,
     `state_id` INTEGER NOT NULL,
     `is_deleted` BOOLEAN NOT NULL DEFAULT false,
+    `academic_year_start_month` INTEGER NOT NULL DEFAULT 4,
+    `academic_year_end_month` INTEGER NOT NULL DEFAULT 3,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
     `city` VARCHAR(255) NOT NULL,
     `pincode` VARCHAR(10) NOT NULL,
@@ -239,7 +253,7 @@ ALTER TABLE `fees_transaction` ADD CONSTRAINT `fees_transaction_school_id_fkey` 
 ALTER TABLE `standards` ADD CONSTRAINT `standards_school_id_fkey` FOREIGN KEY (`school_id`) REFERENCES `schools`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `teacher_standards` ADD CONSTRAINT `teacher_standards_standard_id_fkey` FOREIGN KEY (`standard_id`) REFERENCES `standards`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `teacher_standards` ADD CONSTRAINT `teacher_standards_standard_id_fkey` FOREIGN KEY (`standard_id`) REFERENCES `standards`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `teacher_standards` ADD CONSTRAINT `teacher_standards_teacher_id_fkey` FOREIGN KEY (`teacher_id`) REFERENCES `teachers`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

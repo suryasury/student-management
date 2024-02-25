@@ -7,8 +7,9 @@ const hashPassword = (password) => {
       parseInt(process.env.PASSWORD_SALT_ROUNDS)
     );
   } catch (err) {
+    console.log("errpr", err);
     throw {
-      message: "Error while hashing password.",
+      message: err,
     };
   }
 };
