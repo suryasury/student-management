@@ -23,8 +23,8 @@ module.exports = {
         PG_REDIRECT_URL: "http://localhost:3000/fees/payments",
         PG_WEBHOOKS_URL: "http://localhost:3050/fees/webhooks",
       },
-      env_production: {
-        NODE_ENV: "UAT",
+      env_uat: {
+        NODE_ENV: "uat",
         PORT: 3050,
         DATABASE_URL:
           "mysql://surya:Admin@123@localhost:3306/student_management",
