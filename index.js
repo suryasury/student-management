@@ -32,7 +32,7 @@ app.use(express.json());
 app.use(routes);
 
 app.listen(process.env.NODE_PORT, () => {
-  console.log("Connected to port ", process.env.NODE_PORT);
+  console.log("Connected to port ", process.env.PORT);
 });
 
 // send back a 404 error for any unknown api request

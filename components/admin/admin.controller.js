@@ -10,6 +10,7 @@ const getCurrentAcademicYear = require("../../utils/getCurrentAcademicYear");
 const fs = require("fs");
 const jwt = require("jsonwebtoken");
 const emailService = require("../../utils/emailService");
+const moment = require("moment");
 
 exports.createAdmin = async (req, res) => {
   try {
@@ -100,7 +101,6 @@ exports.getAdminDetails = async (req, res) => {
         email: true,
       },
     });
-    console.log("admin", result);
     return res.status(httpStatus.OK).send({
       success: true,
       message: "Admin details fetched successfully.",
@@ -400,6 +400,35 @@ exports.deleteFeesForStudent = async (req, res) => {
   }
 };
 
+exports.getFeesDetailsById = async (req, res) => {
+  try {
+    let feesId = parseInt(req.params.feesId);
+    let result = await prisma.fees_details.findUnique({
+      where: {
+        id: feesId,
+      },
+      include: {
+        student: true,
+        fees_transactions: true,
+        standard: true,
+      },
+    });
+    return res.status(httpStatus.OK).send({
+      success: true,
+      message: "Fees details fetched successfully.",
+      data: result,
+    });
+  } catch (err) {
+    console.log("err", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
+  }
+};
+
 exports.transactionHistory = async (req, res) => {
   try {
     let schoolId = parseInt(req.user.schoolId);
@@ -409,12 +438,20 @@ exports.transactionHistory = async (req, res) => {
       ? parseInt(req.query.academicYear)
       : "";
     let searchFilter = req.query.search || "";
+    let fromDate = req.query.from || "";
+    let toDate = req.query.to || "";
     let limit = parseInt(req.query.limit || 10);
     let page = parseInt(req.query.page || 1);
     let skip = limit * (page - 1);
     let whereCondition = {
       school_id: schoolId,
     };
+    if (fromDate && toDate) {
+      whereCondition.created_at = {
+        gte: new Date(moment(fromDate).startOf("day").utc().toISOString()),
+        lte: new Date(moment(toDate).endOf("day").utc().toISOString()),
+      };
+    }
     if (termId) {
       whereCondition.fees_detail = {
         term: termId,
@@ -432,6 +469,7 @@ exports.transactionHistory = async (req, res) => {
         standard_id: sectionId,
       };
     }
+
     if (searchFilter) {
       whereCondition.fees_detail = {
         ...whereCondition?.fees_detail,
@@ -1787,7 +1825,7 @@ exports.forgotPassword = async (req, res) => {
       .replace("{{name}}", userDetails.name)
       .replace(
         /{{resetLink}}/g,
-        process.env.RESET_PASSWORD_FRONTEND_HOST + token
+        process.env.RESET_PASSWORD_FRONTEND_HOST_ADMIN + token
       );
     // await emailService.sendEmail({
     //   from: process.env.SMTP_EMAIL,

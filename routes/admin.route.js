@@ -117,5 +117,10 @@ router.get(
   verifyAccessToken,
   adminController.transactionHistory
 );
+router.get(
+  "/fees/details/:feesId",
+  verifyAccessToken,
+  adminController.getFeesDetailsById
+);
 
 module.exports = router;
