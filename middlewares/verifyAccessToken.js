@@ -1,8 +1,10 @@
 let jwt = require("jsonwebtoken");
 let error = require("../helpers/errorHandler");
 const httpStatus = require("http-status");
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
-module.exports = (req, res, next) => {
+module.exports = async (req, res, next) => {
   try {
     let jwtToken = req.headers.authorization;
     const jwtSecret = process.env.JWT_SECRET;
@@ -43,7 +45,33 @@ module.exports = (req, res, next) => {
       return { data: payload, success: true };
     });
     if (jwtData.success) {
-      req.user = JSON.parse(jwtData.data.data);
+      let user = JSON.parse(jwtData.data.data);
+      let model = {};
+      if (user.userType === "parent") {
+        model = prisma.students;
+      } else if (user.userType === "admin") {
+        model = prisma.admins;
+      } else if (user.userType === "teacher") {
+        model = prisma.teachers;
+      }
+      let userData = await model.findUnique({
+        where: {
+          id: parseInt(user.userId),
+        },
+      });
+      if (userData) {
+        req.user = user;
+        return next();
+      } else {
+        return error(
+          {
+            statusCode: httpStatus.UNAUTHORIZED,
+            message: "Session expired. Please login again",
+            error: {},
+          },
+          res
+        );
+      }
     } else {
       return error(
         {
@@ -54,7 +82,6 @@ module.exports = (req, res, next) => {
         res
       );
     }
-    next();
   } catch (err) {
     error(err, res);
     return error(

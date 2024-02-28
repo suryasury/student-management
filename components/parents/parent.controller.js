@@ -11,10 +11,17 @@ const emailService = require("../../utils/emailService");
 const jwt = require("jsonwebtoken");
 const sha256 = require("crypto-js/sha256");
 const axios = require("axios");
+const Razorpay = require("razorpay");
+let crypto = require("crypto");
+
+const razorpayInstance = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_SECRET,
+});
 
 exports.login = async (req, res) => {
   try {
-    let admissionNo = req.body.admissionNo;
+    let admissionNo = req.body.admissionNumber;
     let password = req.body.password;
 
     let userDetails = await prisma.students.findFirst({
@@ -33,7 +40,10 @@ exports.login = async (req, res) => {
           .status(httpStatus.FORBIDDEN)
           .send({ message: "Student not found", success: false, data: {} });
       }
-      let isValidPassword = validatePassword(password, userDetails.password);
+      let isValidPassword = validatePassword(
+        password.trim().toString(),
+        userDetails.password
+      );
       if (isValidPassword) {
         let jwtToken = generateAccesToken({
           userId: userDetails.id,
@@ -169,7 +179,7 @@ exports.resetPasswordWithAuth = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     let admissionNumber = req.body.admissionNumber;
-    let userDetails = await prisma.students.findUnique({
+    let userDetails = await prisma.students.findFirst({
       where: {
         admission_number: admissionNumber,
       },
@@ -287,65 +297,111 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-exports.initiatePayment = async (req, res) => {
+// exports.initiatePayment = async (req, res) => {
+//   try {
+//     let feesId = parseInt(req.params.feesId);
+//     let url = process.env.PG_BASE_URL;
+//     let pgEndpoint = "/pg/v1/pay";
+
+//     let feesDetails = await prisma.fees_details.findUnique({
+//       where: {
+//         id: feesId,
+//       },
+//       include: {
+//         student: true,
+//       },
+//     });
+
+//     let totalPayableAmount =
+//       feesDetails.total_amount + (feesDetails.sc_fees || 0);
+
+//     let payload = {
+//       merchantId: "", //need to take it from env - pg depedency
+//       merchantTransactionId: `TID_${new Date().getTime()}`,
+//       merchantUserId: "", //take from env - pg depedency
+//       amount: totalPayableAmount,
+//       redirectUrl: process.env.PG_REDIRECT_URL,
+//       redirectMode: "REDIRECT",
+//       callbackUrl: process.env.PG_WEBHOOKS_URL,
+//       mobileNumber: feesDetails.student.primary_mobile_no,
+//       paymentInstrument: {
+//         type: "PAY_PAGE",
+//       },
+//     };
+//     let stringifiedPayload = JSON.stringify(payload);
+//     let base64Payload = Buffer.from(stringifiedPayload).toString("base64");
+//     let saltKeyIndex = 2;
+//     let payloadCombained = base64Payload + pgEndpoint + process.env.PG_SALT_KEY; //PG_SALT_KEY need to get thos from phonepe
+//     let hashedPayload = sha256(payloadCombained);
+//     let checkSum = hashedPayload + "###" + saltKeyIndex;
+
+//     let pgResponse = await fetch(url + pgEndpoint, {
+//       method: "POST",
+//       headers: {
+//         accept: "application/json",
+//         "Content-Type": "application/json",
+//         "X-VERIFY": checkSum,
+//       },
+//       body: JSON.stringify(base64Payload),
+//     });
+
+//     let parsedResponse = await pgResponse.json();
+
+//     res.status(httpStatus.OK).send({
+//       message: "Payment initiated",
+//       success: true,
+//       data: parsedResponse,
+//     });
+//   } catch (err) {
+//     console.log(err);
+//     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+//       message: err.message,
+//       success: false,
+//       data: {},
+//       error: err,
+//     });
+//   }
+// };
+
+exports.createRazorpayOrder = async (req, res) => {
   try {
     let feesId = parseInt(req.params.feesId);
-    let url = process.env.PG_BASE_URL;
-    let pgEndpoint = "/pg/v1/pay";
 
     let feesDetails = await prisma.fees_details.findUnique({
       where: {
         id: feesId,
       },
-      include: {
-        student: true,
-      },
     });
 
-    let totalPayableAmount =
-      feesDetails.total_amount + (feesDetails.sc_fees || 0);
+    let totalOrderAmount = feesDetails.total_amount + feesDetails.sc_fees;
 
-    let payload = {
-      merchantId: "", //need to take it from env - pg depedency
-      merchantTransactionId: `TID_${new Date().getTime()}`,
-      merchantUserId: "", //take from env - pg depedency
-      amount: totalPayableAmount,
-      redirectUrl: process.env.PG_REDIRECT_URL,
-      redirectMode: "REDIRECT",
-      callbackUrl: process.env.PG_WEBHOOKS_URL,
-      mobileNumber: feesDetails.student.primary_mobile_no,
-      paymentInstrument: {
-        type: "PAY_PAGE",
+    const options = {
+      amount: totalOrderAmount * 100,
+      currency: "INR",
+      receipt: `R_${Date.now().toString()}`,
+      payment_capture: 1,
+      partial_payment: false,
+      notes: {
+        requestFor: feesDetails.id,
       },
     };
-    let stringifiedPayload = JSON.stringify(payload);
-    let base64Payload = Buffer.from(stringifiedPayload).toString("base64");
-    let saltKeyIndex = 2;
-    let payloadCombained = base64Payload + pgEndpoint + process.env.PG_SALT_KEY; //PG_SALT_KEY need to get thos from phonepe
-    let hashedPayload = sha256(payloadCombained);
-    let checkSum = hashedPayload + "###" + saltKeyIndex;
 
-    let pgResponse = await fetch(url + pgEndpoint, {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "Content-Type": "application/json",
-        "X-VERIFY": checkSum,
-      },
-      body: JSON.stringify(base64Payload),
-    });
+    let orderDetails = await razorpayInstance.orders.create(options);
 
-    let parsedResponse = await pgResponse.json();
-
+    if (!orderDetails) {
+      throw {
+        message: "Could not initiate payment. Please try again.",
+      };
+    }
     res.status(httpStatus.OK).send({
-      message: "Payment initiated",
+      message: "Order created successfully.",
       success: true,
-      data: parsedResponse,
+      data: { ...orderDetails, merchantId: process.env.RAZORPAY_KEY_ID },
     });
   } catch (err) {
     console.log(err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      message: err.message,
+      message: err?.message || err.message,
       success: false,
       data: {},
       error: err,
@@ -353,38 +409,67 @@ exports.initiatePayment = async (req, res) => {
   }
 };
 
-exports.paymentWebHooks = async (req, res) => {
+exports.verifyPayment = async (req, res) => {
   try {
-    res.status(httpStatus.OK).send({
-      message: "Checksum verified",
-      success: true,
-      data: {},
-    });
-  } catch (err) {
-    console.log(err);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      message: err.message,
-      success: false,
-      data: {},
-      error: err,
-    });
-  }
-};
+    let feesId = parseInt(req.params.feesId);
+    let paymentResponse = req.body.rezorPayResponse;
+    let razorPayOrderId = req.body.orderId;
+    const shasum = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
+    shasum.update(`${razorPayOrderId}|${paymentResponse.razorpay_payment_id}`);
 
-exports.paymentStatus = async (req, res) => {
-  try {
-    res.status(httpStatus.OK).send({
-      message: "Checksum verified on payment status",
-      success: true,
+    const digest = shasum.digest("hex");
+
+    if (paymentResponse.razorpay_signature === digest) {
+      let orderDetails = await razorpayInstance.orders.fetchPayments(
+        razorPayOrderId
+      );
+
+      let successResponse = orderDetails.items.filter(
+        (payment) => payment.captured
+      );
+
+      if (successResponse.length > 0) {
+        let feesDetails = await prisma.fees_details.update({
+          where: {
+            id: feesId,
+          },
+          data: {
+            is_paid: true,
+            payed_through: "Online",
+          },
+        });
+        await prisma.fees_transaction.create({
+          data: {
+            fee_detail_id: feesId,
+            amount_paid: successResponse[0].amount / 100,
+            transaction_date: new Date(),
+            payment_mode: successResponse[0].method.toUpperCase(),
+            school_id: feesDetails.school_id,
+            pg_gateway: "RAZORPAY",
+            order_id: successResponse[0].order_id,
+            payment_id: successResponse[0].id,
+            wallet_provider: (successResponse[0].wallet || "").toUpperCase(),
+          },
+        });
+      } else {
+        return res.status(400).send({
+          success: true,
+          message: "Payment failed. Please try after Sometimes",
+          data: {},
+        });
+      }
+      return res.status(200).send({
+        success: true,
+        message: "Payment verified successfully",
+        data: {},
+      });
+    }
+    res.status(400).send({
+      success: false,
+      message: "Invalid payment or payment not legit.",
       data: {},
     });
   } catch (err) {
-    console.log(err);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      message: err.message,
-      success: false,
-      data: {},
-      error: err,
-    });
+    error(err, res);
   }
 };

@@ -123,4 +123,6 @@ router.get(
   adminController.getFeesDetailsById
 );
 
+router.post("/fees/payment/webhook", adminController.paymentWebHooks);
+
 module.exports = router;

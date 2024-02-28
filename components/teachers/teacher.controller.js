@@ -83,7 +83,13 @@ exports.getStaffSections = async (req, res) => {
         school_id: parseInt(req.user.schoolId),
       },
       include: {
-        standard: true,
+        standard: {
+          include: {
+            _count: {
+              select: { students: true },
+            },
+          },
+        },
       },
       orderBy: [
         {

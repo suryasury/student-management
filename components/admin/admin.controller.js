@@ -11,6 +11,7 @@ const fs = require("fs");
 const jwt = require("jsonwebtoken");
 const emailService = require("../../utils/emailService");
 const moment = require("moment");
+let crypto = require("crypto");
 
 exports.createAdmin = async (req, res) => {
   try {
@@ -1906,17 +1907,70 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-// exports.getStaffList = async (req, res) => {
-//   try {
-//     let timeZoneOffset = req.headers.timezoneoffset;
-//     let result =
-//       await prisma.$queryRaw`SELECT id, name, email, is_active, CONVERT_TZ(created_at, "+00:00", ${timeZoneOffset}) as created_at FROM teachers where is_deleted = 0`;
-//     res.status(200).send({
-//       success: true,
-//       message: "Staff list fetched successfully.",
-//       data: result,
-//     });
-//   } catch (err) {
-//     error(err, res);
-//   }
-// };
+exports.paymentWebHooks = async (req, res) => {
+  try {
+    let paymentDetails = req.body;
+
+    const shasum = crypto.createHmac("sha256", process.env.RP_WEBHOOK_SECRET);
+
+    shasum.update(JSON.stringify(paymentDetails));
+
+    const digest = shasum.digest("hex");
+
+    if (digest === req.headers["x-razorpay-signature"]) {
+      let event = paymentDetails.event;
+
+      if (event === "payment.captured") {
+        let paymentResponse = paymentDetails.payload.payment.entity;
+
+        let feesId = parseInt(paymentResponse.notes.requestFor);
+
+        let feesDetails = await prisma.fees_details.update({
+          where: {
+            id: feesId,
+          },
+          data: {
+            is_paid: true,
+            payed_through: "Online",
+          },
+        });
+
+        let feesTransactions = await prisma.fees_transaction.findFirst({
+          where: {
+            fee_detail_id: feesDetails.id,
+            school_id: feesDetails.school_id,
+          },
+        });
+        if (!feesTransactions) {
+          await prisma.fees_transaction.create({
+            data: {
+              fee_detail_id: feesId,
+              amount_paid: paymentResponse.amount / 100,
+              transaction_date: new Date(),
+              payment_mode: paymentResponse.method.toUpperCase(),
+              wallet_provider: (paymentResponse.wallet || "").toUpperCase(),
+              school_id: feesDetails.school_id,
+              pg_gateway: "RAZORPAY",
+              order_id: paymentResponse.order_id,
+              payment_id: paymentResponse.id,
+            },
+          });
+        }
+      }
+      return res.status(200).send({
+        success: true,
+        message: "Success",
+        data: {},
+      });
+    } else {
+      return res.status(400).send({
+        success: false,
+        message: "Signature doesnt match",
+        data: {},
+      });
+    }
+  } catch (err) {
+    console.log("errr", err);
+    error(err, res);
+  }
+};

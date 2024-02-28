@@ -131,6 +131,10 @@ model fees_transaction {
   bank_transaction_id       String?      @db.VarChar(50)
   pg_authorization_code     String?      @db.VarChar(50)
   client_transaction_id     String?      @db.VarChar(50)
+  order_id                  String?
+  wallet_provider           String?
+  payment_id                String?
+  pg_gateway                String?
   arn_id                    String?      @db.VarChar(50)
   bank_id                   String?      @db.VarChar(50)
   fee_detail_id             Int

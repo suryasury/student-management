@@ -21,9 +21,10 @@ router.patch(
 );
 router.post("/forgot-password", parentsController.forgotPassword);
 router.patch("/reset-password/:token", parentsController.resetPassword);
-router.get("/initiate/payment/:feesId", parentsController.initiatePayment);
-router.post("/payments/webhooks", parentsController.initiatePayment);
-//pending in parent controller
-//  1. need to add payment webhooks api
-
+router.get("/initiate/payment/:feesId", parentsController.createRazorpayOrder);
+router.post(
+  "/fees/payment/verify/:feesId",
+  verifyAccessToken,
+  parentsController.verifyPayment
+);
 module.exports = router;
