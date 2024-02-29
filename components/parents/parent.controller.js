@@ -412,7 +412,7 @@ exports.createRazorpayOrder = async (req, res) => {
 exports.verifyPayment = async (req, res) => {
   try {
     let feesId = parseInt(req.params.feesId);
-    let paymentResponse = req.body.rezorPayResponse;
+    let paymentResponse = req.body.razorPayResponse;
     let razorPayOrderId = req.body.orderId;
     const shasum = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
     shasum.update(`${razorPayOrderId}|${paymentResponse.razorpay_payment_id}`);
