@@ -1,5 +1,5 @@
 const httpStatus = require("http-status");
-const { PrismaClient, Prisma } = require("@prisma/client");
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const error = require("../../helpers/errorHandler");
 const hashPassword = require("../../helpers/hashPassword");
@@ -12,6 +12,7 @@ const jwt = require("jsonwebtoken");
 const emailService = require("../../utils/emailService");
 const moment = require("moment");
 let crypto = require("crypto");
+const path = require("path");
 
 exports.createAdmin = async (req, res) => {
   try {
@@ -537,35 +538,6 @@ exports.transactionHistory = async (req, res) => {
 
 exports.updateFeesDetails = async (req, res) => {
   try {
-    let feesId = parseInt(req.params.feesId);
-    await prisma.fees_details.update({
-      where: {
-        id: feesDetails.id,
-      },
-      data: {
-        total_amount: feesDetails.total_amount,
-        sc_fees: feesDetails.sc_fees,
-        due_date: feesDetails.due_date,
-      },
-    });
-    res.status(httpStatus.OK).send({
-      success: true,
-      message: "Fees Details updated successfully.",
-      data: {},
-    });
-  } catch (err) {
-    console.log("error", err);
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      success: true,
-      message: "Internal server error. Please try again later.",
-      data: {},
-      error: err,
-    });
-  }
-};
-
-exports.updateFeesDetails = async (req, res) => {
-  try {
     let feesDetails = req.body;
     await prisma.fees_details.update({
       where: {
@@ -732,7 +704,7 @@ exports.createStudent = async (req, res) => {
       }
       return res.status(httpStatus.CONFLICT).send({
         success: true,
-        message: `Student already exists. Status - ${status}`,
+        message: `Student with given admission number already exists. Status - ${status}`,
         data: {},
       });
     }
@@ -917,25 +889,25 @@ exports.createStandards = async (req, res) => {
   }
 };
 
-exports.getStandardList = async (req, res) => {
-  try {
-    let timeZoneOffset = req.headers.timezoneoffset;
-    let result =
-      await prisma.$queryRaw`SELECT id, standard, section, CONVERT_TZ(created_at, "+00:00", ${timeZoneOffset}) as created_at FROM standards WHERE is_deleted = 0`;
-    res.status(httpStatus.OK).send({
-      success: true,
-      message: "Standard list fetched successfully",
-      data: result,
-    });
-  } catch (err) {
-    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
-      success: true,
-      message: "Internal server error. Please try again later.",
-      data: {},
-      error: err,
-    });
-  }
-};
+// exports.getStandardList = async (req, res) => {
+//   try {
+//     let timeZoneOffset = req.headers.timezoneoffset;
+//     let result =
+//       await prisma.$queryRaw`SELECT id, standard, section, CONVERT_TZ(created_at, "+00:00", ${timeZoneOffset}) as created_at FROM standards WHERE is_deleted = 0`;
+//     res.status(httpStatus.OK).send({
+//       success: true,
+//       message: "Standard list fetched successfully",
+//       data: result,
+//     });
+//   } catch (err) {
+//     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+//       success: true,
+//       message: "Internal server error. Please try again later.",
+//       data: {},
+//       error: err,
+//     });
+//   }
+// };
 
 exports.getAdminList = async (req, res) => {
   try {
@@ -1013,6 +985,7 @@ exports.getAcademicYearList = async (req, res) => {
     });
   }
 };
+
 exports.getStaffListMinified = async (req, res) => {
   try {
     let schoolId = parseInt(req.user.schoolId);
@@ -1300,7 +1273,12 @@ exports.getAllSections = async (req, res) => {
           },
           _count: {
             select: {
-              students: true,
+              students: {
+                where: {
+                  is_active: true,
+                  is_deleted: false,
+                },
+              },
             },
           },
         },
@@ -1335,6 +1313,44 @@ exports.getAllSections = async (req, res) => {
       {
         statusCode: httpStatus.UNAUTHORIZED,
         message: "Internal server error. Please try again after sometime",
+        error: err,
+      },
+      res
+    );
+  }
+};
+
+exports.markStudentActive = async (req, res) => {
+  try {
+    let studentId = parseInt(req.params.studentId);
+    let academicYear = await prisma.academic_years.findFirst({
+      orderBy: {
+        created_at: "desc",
+      },
+    });
+    let result = await prisma.students.update({
+      where: {
+        id: studentId,
+      },
+      data: {
+        academic_year_id: academicYear.id,
+        is_active: true,
+        is_deleted: false,
+      },
+    });
+    res.status(httpStatus.OK).send({
+      message: "Student marked as active.",
+      success: true,
+      data: result,
+    });
+  } catch (err) {
+    console.log("Error", err);
+    return error(
+      {
+        statusCode: httpStatus.UNAUTHORIZED,
+        message:
+          err.message ||
+          "Internal server error. Please try again after sometime",
         error: err,
       },
       res
@@ -1379,6 +1395,7 @@ exports.getStudentList = async (req, res) => {
     let sectionId = req.query.section ? parseInt(req.query.section) : "";
     let termId = req.query.term ? parseInt(req.query.term) : "";
     let paymentStatus = req.query.status || "";
+    let studentStatus = req.query.studentStatus || "";
     let searchFilter = req.query.search || "";
     let limit = parseInt(req.query.limit || 10);
     let page = parseInt(req.query.page || 1);
@@ -1389,6 +1406,15 @@ exports.getStudentList = async (req, res) => {
     };
     if (sectionId) {
       whereConditions.standard_id = sectionId;
+    }
+    if (studentStatus) {
+      if (studentStatus === "inactive") {
+        whereConditions.is_active = false;
+        whereConditions.is_deleted = true;
+      } else {
+        whereConditions.is_active = true;
+        whereConditions.is_deleted = false;
+      }
     }
     if (termId) {
       whereConditions.fees_details = {
@@ -1828,12 +1854,12 @@ exports.forgotPassword = async (req, res) => {
         /{{resetLink}}/g,
         process.env.RESET_PASSWORD_FRONTEND_HOST_ADMIN + token
       );
-    // await emailService.sendEmail({
-    //   from: process.env.SMTP_EMAIL,
-    //   to: userDetails.email,
-    //   subject: "Reset password",
-    //   html: html,
-    // });
+    await emailService.sendEmail({
+      from: process.env.SMTP_EMAIL,
+      to: userDetails.email,
+      subject: "Reset password",
+      html: html,
+    });
     res.status(httpStatus.OK).send({
       message:
         "Reset password link has been sent to your email. Kindly check the email and proceed further",
@@ -1972,5 +1998,34 @@ exports.paymentWebHooks = async (req, res) => {
   } catch (err) {
     console.log("errr", err);
     error(err, res);
+  }
+};
+
+exports.downloadMasterTemplate = async (req, res) => {
+  try {
+    const filePath = "../emailTemplates/studentMasterDataTemplate.csv";
+    res.download(filePath, (err) => {
+      if (err) {
+        return res.status(httpStatus.OK).send({
+          message: "Failed to download file.",
+          success: false,
+          data: {},
+          error: err,
+        });
+      }
+    });
+    res.status(httpStatus.OK).send({
+      message: "File downloaded successfully.",
+      success: true,
+      data: filePath,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: err?.message || err.message,
+      success: false,
+      data: {},
+      error: err,
+    });
   }
 };

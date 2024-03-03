@@ -406,7 +406,7 @@ exports.forgotPassword = async (req, res) => {
       );
     await emailService.sendEmail({
       from: process.env.SMTP_EMAIL,
-      to: "surya.ucea@gmail.com",
+      to: userDetails.email,
       subject: "Reset password",
       html: html,
     });

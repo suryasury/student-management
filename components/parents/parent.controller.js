@@ -9,8 +9,6 @@ const hideEmail = require("../../utils/emailScreening");
 const fs = require("fs");
 const emailService = require("../../utils/emailService");
 const jwt = require("jsonwebtoken");
-const sha256 = require("crypto-js/sha256");
-const axios = require("axios");
 const Razorpay = require("razorpay");
 let crypto = require("crypto");
 
@@ -218,12 +216,12 @@ exports.forgotPassword = async (req, res) => {
         /{{resetLink}}/g,
         process.env.RESET_PASSWORD_FRONTEND_HOST_PARENT + token
       );
-    // await emailService.sendEmail({
-    //   from: process.env.SMTP_EMAIL,
-    //   to: userDetails.email,
-    //   subject: "Reset password",
-    //   html: html,
-    // });
+    await emailService.sendEmail({
+      from: process.env.SMTP_EMAIL,
+      to: userDetails.email,
+      subject: "Reset password",
+      html: html,
+    });
     const screenedEmail = hideEmail(userDetails.email);
     res.status(httpStatus.OK).send({
       message: `Reset password link has been sent to your email ${screenedEmail}. Kindly check the email and proceed further`,
@@ -438,19 +436,27 @@ exports.verifyPayment = async (req, res) => {
             payed_through: "Online",
           },
         });
-        await prisma.fees_transaction.create({
-          data: {
-            fee_detail_id: feesId,
-            amount_paid: successResponse[0].amount / 100,
-            transaction_date: new Date(),
-            payment_mode: successResponse[0].method.toUpperCase(),
+        let feesTransactions = await prisma.fees_transaction.findFirst({
+          where: {
+            fee_detail_id: feesDetails.id,
             school_id: feesDetails.school_id,
-            pg_gateway: "RAZORPAY",
-            order_id: successResponse[0].order_id,
-            payment_id: successResponse[0].id,
-            wallet_provider: (successResponse[0].wallet || "").toUpperCase(),
           },
         });
+        if (!feesTransactions) {
+          await prisma.fees_transaction.create({
+            data: {
+              fee_detail_id: feesId,
+              amount_paid: successResponse[0].amount / 100,
+              transaction_date: new Date(),
+              payment_mode: successResponse[0].method.toUpperCase(),
+              school_id: feesDetails.school_id,
+              pg_gateway: "RAZORPAY",
+              order_id: successResponse[0].order_id,
+              payment_id: successResponse[0].id,
+              wallet_provider: (successResponse[0].wallet || "").toUpperCase(),
+            },
+          });
+        }
       } else {
         return res.status(400).send({
           success: true,

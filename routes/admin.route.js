@@ -74,10 +74,15 @@ router.delete(
   adminController.removeStaffFromStandard
 );
 router.get("/student/list", verifyAccessToken, adminController.getStudentList);
-router.patch(
+router.delete(
   "/student/delete/:studentId",
   verifyAccessToken,
   adminController.deleteStudent
+);
+router.patch(
+  "/student/activate/:studentId",
+  verifyAccessToken,
+  adminController.markStudentActive
 );
 router.post(
   "/master/upload/student",
@@ -124,5 +129,9 @@ router.get(
 );
 
 router.post("/fees/payment/webhook", adminController.paymentWebHooks);
+router.get(
+  "/download/csv/master/template",
+  adminController.downloadMasterTemplate
+);
 
 module.exports = router;
