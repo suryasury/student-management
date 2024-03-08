@@ -4,20 +4,25 @@ module.exports = {
       name: "fm_backend",
       script: "./index.js",
       env_production: {
-        NODE_ENV: "PROD",
+        NODE_ENV: "prod",
         PORT: 3050,
         DATABASE_URL:
-          "mysql://surya:Admin@123@localhost:3306/student_management",
+          "mysql://root:Password@123@localhost:3306/student_management",
         JWT_SECRET:
-          "c52bba2d3021547a9f92dc861a4f0ee44f1d72d6edac093a0ee224290362f6043a27e7b8c459fe02180674ba3f09a1d58f97e19a025ecc983fd75cfd1ac3bf1a",
+          "uwyiausa887ahs92dc861a4f0eeiusiq98w9qjsiqsjqwuqi9899qiwq8990674ba3f09a1d58f97e19a025kjoiwoq89w89qwoiwqc3bf1a",
         PASSWORD_ENCRYPT_KEY:
           "3d09c8b30cf4983ab8d2128e93267fe5a9943fd98feb02c09390fa504ec77c29",
         PASSWORD_SALT_ROUNDS: 10,
-        RESET_PASSWORD_FRONTEND_HOST: "http://localhost:3000/reset-password/",
+        RESET_PASSWORD_FRONTEND_HOST_ADMIN:
+          "https://admin.vlmhss.edu.in/reset-password/",
+        RESET_PASSWORD_FRONTEND_HOST_TEACHER:
+          "https://teacher.vlmhss.edu.in/reset-password/",
+        RESET_PASSWORD_FRONTEND_HOST_PARENT:
+          "https://parent.vlmhss.edu.in/reset-password/",
         SMTP_HOST: "smtppro.zoho.in",
         SMTP_PORT: "465",
-        SMTP_EMAIL: "sales@eclatsoftwaresolutions.com",
-        SMTP_PASSWORD: "Suryakamal@3211",
+        SMTP_EMAIL: "noreply@vlmhss.edu.in",
+        SMTP_PASSWORD: "zXngs8$d",
         PG_BASE_URL: "https://api-preprod.phonepe.com/apis/pg-sandbox",
         PG_REDIRECT_URL: "http://localhost:3000/fees/payments",
         PG_WEBHOOKS_URL: "http://localhost:3050/fees/webhooks",
