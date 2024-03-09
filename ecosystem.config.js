@@ -4,7 +4,7 @@ module.exports = {
       name: "fm_backend",
       script: "./index.js",
       env_production: {
-        NODE_ENV: "prod",
+        NODE_ENV: "production",
         PORT: 3050,
         DATABASE_URL:
           "mysql://root:Password@123@localhost:3306/student_management",
