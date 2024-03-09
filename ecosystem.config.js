@@ -26,9 +26,9 @@ module.exports = {
         PG_BASE_URL: "https://api-preprod.phonepe.com/apis/pg-sandbox",
         PG_REDIRECT_URL: "http://localhost:3000/fees/payments",
         PG_WEBHOOKS_URL: "http://localhost:3050/fees/webhooks",
-        RP_SECRET: "sr43VLecajfqljry6EkSkEKQ",
-        RP_KEY_ID: "rzp_test_chuP0tLcsp9D5v",
-        RP_WEBHOOK_SECRET: "b008613e-007f-4a90-beee-7899d38b4efb",
+        RP_SECRET: "BOFzFFc1TCAyWskD2kIBAChE",
+        RP_KEY_ID: "rzp_live_CEoPlK1BTopDBr",
+        RP_WEBHOOK_SECRET: "a66d96be-9033-4d9d-8714-ab7de11c5b38",
         RP_MERCHENT_ID: "JVoztnRSq8i1lg",
       },
       env_uat: {
