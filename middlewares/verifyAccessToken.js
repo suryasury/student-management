@@ -57,6 +57,8 @@ module.exports = async (req, res, next) => {
       let userData = await model.findUnique({
         where: {
           id: parseInt(user.userId),
+          is_active: true,
+          is_deleted: false,
         },
       });
       if (userData) {
@@ -66,7 +68,7 @@ module.exports = async (req, res, next) => {
         return error(
           {
             statusCode: httpStatus.UNAUTHORIZED,
-            message: "Session expired. Please login again",
+            message: "User not found or invalid user",
             error: {},
           },
           res

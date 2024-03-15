@@ -13,6 +13,7 @@ const emailService = require("../../utils/emailService");
 const moment = require("moment");
 let crypto = require("crypto");
 const path = require("path");
+const { createObjectCsvWriter } = require("csv-writer");
 
 exports.createAdmin = async (req, res) => {
   try {
@@ -525,6 +526,277 @@ exports.transactionHistory = async (req, res) => {
         count,
       },
     });
+  } catch (err) {
+    console.log("error", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      success: true,
+      message: "Internal server error. Please try again later.",
+      data: {},
+      error: err,
+    });
+  }
+};
+
+exports.transactionHistoryDownload = async (req, res) => {
+  try {
+    let schoolId = parseInt(req.user.schoolId);
+    let sectionId = req.query.section ? parseInt(req.query.section) : "";
+    let termId = req.query.term ? parseInt(req.query.term) : "";
+    let academicYear = req.query.academicYear
+      ? parseInt(req.query.academicYear)
+      : "";
+    let searchFilter = req.query.search || "";
+    let fromDate = req.query.from || "";
+    let toDate = req.query.to || "";
+    let whereCondition = {
+      school_id: schoolId,
+    };
+    if (fromDate && toDate) {
+      whereCondition.created_at = {
+        gte: new Date(moment(fromDate).startOf("day").utc().toISOString()),
+        lte: new Date(moment(toDate).endOf("day").utc().toISOString()),
+      };
+    }
+    if (termId) {
+      whereCondition.fees_detail = {
+        term: termId,
+      };
+    }
+    if (academicYear) {
+      whereCondition.fees_detail = {
+        ...whereCondition?.fees_detail,
+        academic_year_id: academicYear,
+      };
+    }
+    if (sectionId) {
+      whereCondition.fees_detail = {
+        ...whereCondition?.fees_detail,
+        standard_id: sectionId,
+      };
+    }
+
+    if (searchFilter) {
+      whereCondition.fees_detail = {
+        ...whereCondition?.fees_detail,
+        student: {
+          OR: [
+            {
+              admission_number: {
+                startsWith: searchFilter,
+              },
+            },
+            {
+              name: {
+                contains: searchFilter,
+              },
+            },
+          ],
+        },
+      };
+    }
+
+    let feesTransactions = await prisma.fees_transaction.findMany({
+      where: whereCondition,
+      include: {
+        fees_detail: {
+          include: {
+            academic_year: true,
+            student: true,
+            standard: true,
+          },
+        },
+      },
+      orderBy: [
+        {
+          created_at: "desc",
+        },
+      ],
+    });
+
+    if (feesTransactions.length === 0) {
+      return res.status(httpStatus.CONFLICT).send({
+        success: false,
+        message: "No transaction found for selected filter to download",
+        data: {},
+      });
+    }
+
+    const months = {
+      1: {
+        long: "January",
+        short: "JAN",
+      },
+      2: {
+        long: "February",
+        short: "FEB",
+      },
+      3: {
+        long: "March",
+        short: "MAR",
+      },
+      4: {
+        long: "April",
+        short: "APR",
+      },
+      5: {
+        long: "May",
+        short: "MAY",
+      },
+      6: {
+        long: "June",
+        short: "JUN",
+      },
+      7: {
+        long: "July",
+        short: "JUL",
+      },
+      8: {
+        long: "August",
+        short: "AUG",
+      },
+      9: {
+        long: "September",
+        short: "SEP",
+      },
+      10: {
+        long: "October",
+        short: "OCT",
+      },
+      11: {
+        long: "November",
+        short: "NOV",
+      },
+      12: {
+        long: "December",
+        short: "DEC",
+      },
+    };
+
+    let academicYears = await prisma.academic_years.findMany();
+
+    let academicYearMap = {};
+
+    academicYears.forEach((academicYear) => {
+      academicYearMap[academicYear.id] =
+        (months[academicYear.academic_month_from].short +
+          " " +
+          academicYear.academic_year_from || "NA") +
+        " - " +
+        (months[academicYear.academic_month_to].short +
+          " " +
+          academicYear.academic_year_to || "NA");
+    });
+
+    let headers = [
+      {
+        id: "admissionNumber",
+        title: "Admission Number",
+      },
+      {
+        id: "name",
+        title: "Student Name",
+      },
+      {
+        id: "term",
+        title: "Term",
+      },
+      {
+        id: "academicYear",
+        title: "Academic Year",
+      },
+      {
+        id: "standard",
+        title: "Standard & section",
+      },
+      {
+        id: "amountPaid",
+        title: "Amount Paid(RS.)",
+      },
+      {
+        id: "paidVia",
+        title: "Payed Through",
+      },
+      {
+        id: "paymentMethod",
+        title: "Mode of Payment",
+      },
+      {
+        id: "referenceNo",
+        title: "Reference Number",
+      },
+      {
+        id: "paymentDate",
+        title: "Payment Date",
+      },
+    ];
+
+    let data = feesTransactions.map((feesData) => {
+      let feesobj = {
+        admissionNumber:
+          feesData.fees_detail.student.admission_number.toString(),
+        name: feesData.fees_detail.student.name.toUpperCase(),
+        term: feesData.fees_detail.term,
+        academicYear: academicYearMap[feesData.fees_detail.academic_year_id],
+        standard:
+          feesData.fees_detail.standard.standard +
+          " - " +
+          feesData.fees_detail.standard.section,
+        amountPaid: feesData.amount_paid.toFixed(1),
+        paidVia: feesData.fees_detail.payed_through,
+        paymentMethod: feesData.payment_mode,
+        referenceNo: "NA",
+        paymentDate: new Date(feesData.created_at).toLocaleString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          timeZone: "IST",
+        }),
+      };
+      return feesobj;
+    });
+
+    let fileName = `transactionhistory_${new Date()
+      .toISOString()
+      .substring(0, 10)}.csv`;
+
+    const csvWriter = createObjectCsvWriter({
+      path: path.join(__dirname, fileName),
+      header: headers,
+    });
+
+    csvWriter
+      .writeRecords(data)
+      .then(() => {
+        const filePath = path.join(__dirname, fileName);
+        const fileStream = fs.createReadStream(filePath);
+
+        res.header("Access-Control-Expose-Headers", "Content-Disposition");
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename=${encodeURIComponent(fileName)}`
+        );
+
+        fileStream.pipe(res);
+        res.on("finish", () => {
+          fs.unlink(filePath, (err) => {
+            if (err) {
+              console.error("Error deleting CSV file", err);
+            } else {
+              console.log("CSV file deleted successfully");
+            }
+          });
+        });
+      })
+      .catch((err) => {
+        console.error("Error writing CSV:", err);
+        return res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+          success: false,
+          message: "Error downloading file. please try again",
+          data: {},
+          error: err,
+        });
+      });
   } catch (err) {
     console.log("error", err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
@@ -1489,6 +1761,213 @@ exports.getStudentList = async (req, res) => {
       success: true,
       data: { studentList, count },
     });
+  } catch (err) {
+    console.log("error", err);
+    return error(
+      {
+        statusCode: httpStatus.UNAUTHORIZED,
+        message: "Internal server error. Please try again after sometime",
+        error: err,
+      },
+      res
+    );
+  }
+};
+
+exports.downloadStudentList = async (req, res) => {
+  try {
+    let sectionId = req.query.section ? parseInt(req.query.section) : "";
+    let termId = req.query.term ? parseInt(req.query.term) : "";
+    let paymentStatus = req.query.status || "";
+    let studentStatus = req.query.studentStatus || "";
+    let searchFilter = req.query.search || "";
+    let whereConditions = {
+      is_active: true,
+      is_deleted: false,
+    };
+    if (sectionId) {
+      whereConditions.standard_id = sectionId;
+    }
+    if (studentStatus) {
+      if (studentStatus === "inactive") {
+        whereConditions.is_active = false;
+        whereConditions.is_deleted = true;
+      } else {
+        whereConditions.is_active = true;
+        whereConditions.is_deleted = false;
+      }
+    }
+    if (termId) {
+      whereConditions.fees_details = {
+        some: {
+          term: {
+            equals: termId,
+          },
+        },
+      };
+    }
+    if (paymentStatus) {
+      const isPaid = paymentStatus === "paid";
+      whereConditions.fees_details = {
+        some: {
+          ...whereConditions?.fees_details?.some,
+          is_paid: {
+            equals: isPaid,
+          },
+        },
+      };
+    }
+    if (searchFilter) {
+      whereConditions.OR = [
+        {
+          admission_number: {
+            startsWith: searchFilter,
+          },
+        },
+        {
+          name: {
+            contains: searchFilter,
+          },
+        },
+      ];
+    }
+    let academicYear = await prisma.academic_years.findFirst({
+      orderBy: {
+        created_at: "desc",
+      },
+    });
+    let studentList = await prisma.students.findMany({
+      where: whereConditions,
+      include: {
+        standard: true,
+        fees_details: {
+          ...(academicYear?.id
+            ? {
+                where: {
+                  academic_year_id: academicYear.id,
+                },
+              }
+            : {}),
+          include: {
+            fees_transactions: true,
+          },
+        },
+      },
+      orderBy: {
+        admission_number: "asc",
+      },
+    });
+
+    if (studentList.length === 0) {
+      return res.status(httpStatus.CONFLICT).send({
+        success: false,
+        message: "No Students found for selected filter to download",
+        data: {},
+      });
+    }
+
+    let headers = [
+      {
+        id: "admissionNumber",
+        title: "Admission Number",
+      },
+      {
+        id: "name",
+        title: "Student Name",
+      },
+      {
+        id: "standard",
+        title: "Standard & section",
+      },
+      {
+        id: "fatherName",
+        title: "Father/Guardian Name",
+      },
+      {
+        id: "mobileNumber",
+        title: "Mobile Number",
+      },
+      {
+        id: "termOne",
+        title: "Term One",
+      },
+      {
+        id: "termTwo",
+        title: "Term Two",
+      },
+      {
+        id: "termThree",
+        title: "Term Three",
+      },
+    ];
+
+    const getFeesStatus = (feedDetails, term) => {
+      let feeDetail = feedDetails.find((fee) => fee.term === term);
+      if (feeDetail) {
+        if (feeDetail.is_paid) {
+          return "Paid";
+        }
+        return "Pending";
+      }
+      return "No Data";
+    };
+
+    let formattedStudentData = studentList.map((studentData) => {
+      return {
+        admissionNumber: studentData.admission_number,
+        name: studentData.name,
+        fatherName: studentData.father_name,
+        mobileNumber: studentData.primary_mobile_no,
+        standard:
+          studentData.standard.standard + " - " + studentData.standard.section,
+        termOne: getFeesStatus(studentData.fees_details, 1),
+        termTwo: getFeesStatus(studentData.fees_details, 2),
+        termThree: getFeesStatus(studentData.fees_details, 3),
+      };
+    });
+
+    let fileName = `studentDetails_${new Date()
+      .toISOString()
+      .substring(0, 10)}.csv`;
+
+    const csvWriter = createObjectCsvWriter({
+      path: path.join(__dirname, fileName),
+      header: headers,
+    });
+
+    csvWriter
+      .writeRecords(formattedStudentData)
+      .then(() => {
+        const filePath = path.join(__dirname, fileName);
+        const fileStream = fs.createReadStream(filePath);
+
+        res.header("Access-Control-Expose-Headers", "Content-Disposition");
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename=${encodeURIComponent(fileName)}`
+        );
+
+        fileStream.pipe(res);
+        res.on("finish", () => {
+          fs.unlink(filePath, (err) => {
+            if (err) {
+              console.error("Error deleting CSV file", err);
+            } else {
+              console.log("CSV file deleted successfully");
+            }
+          });
+        });
+      })
+      .catch((err) => {
+        console.error("Error writing CSV:", err);
+        return res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+          success: false,
+          message: "Error downloading file. please try again",
+          data: {},
+          error: err,
+        });
+      });
   } catch (err) {
     console.log("error", err);
     return error(

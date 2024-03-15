@@ -22,6 +22,8 @@ app.options("*", cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+//aws sdk sm process.env = {}
+
 // jwt authentication
 // app.use(passport.initialize());
 // passport.use("jwt", jwtStrategy);

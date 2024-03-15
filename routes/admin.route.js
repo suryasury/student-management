@@ -74,6 +74,11 @@ router.delete(
   adminController.removeStaffFromStandard
 );
 router.get("/student/list", verifyAccessToken, adminController.getStudentList);
+router.get(
+  "/student/list/download",
+  verifyAccessToken,
+  adminController.downloadStudentList
+);
 router.delete(
   "/student/delete/:studentId",
   verifyAccessToken,
@@ -121,6 +126,11 @@ router.get(
   "/fees/transactions/history",
   verifyAccessToken,
   adminController.transactionHistory
+);
+router.get(
+  "/fees/transactions/history/download",
+  verifyAccessToken,
+  adminController.transactionHistoryDownload
 );
 router.get(
   "/fees/details/:feesId",
