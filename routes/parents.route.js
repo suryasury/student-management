@@ -21,9 +21,9 @@ router.patch(
 );
 router.post("/forgot-password", parentsController.forgotPassword);
 router.patch("/reset-password/:token", parentsController.resetPassword);
-router.get("/initiate/payment/:feesId", parentsController.createRazorpayOrder);
+router.post("/initiate/payment", parentsController.createRazorpayOrder);
 router.post(
-  "/fees/payment/verify/:feesId",
+  "/fees/payment/verify",
   verifyAccessToken,
   parentsController.verifyPayment
 );

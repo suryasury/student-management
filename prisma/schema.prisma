@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,29 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// model parents {
-//   id            Int            @id @default(autoincrement())
-//   name          String         @db.VarChar(255)
-//   mobile_number String         @db.VarChar(15)
-//   email         String         @db.VarChar(45)
-//   password      String         @db.VarChar(255)
-//   is_deleted    Boolean        @default(false)
-//   is_active     Boolean        @default(true)
-//   created_at    DateTime       @default(now()) @db.Timestamp(0)
-//   updated_at    DateTime       @default(now()) @updatedAt @db.Timestamp(0)
-//   school_id     Int
-//   school        schools        @relation(fields: [school_id], references: [id])
-//   students      students[]
-//   fees_details  fees_details[]
-
-//   @@unique([mobile_number, school_id, is_deleted], name: "parentUniqueIdentifier")
-// }
-
 model teachers {
   id                  Int                 @id @default(autoincrement())
   name                String              @db.VarChar(255)
   email               String              @unique @db.VarChar(255)
-  teacherId           String              @db.VarChar(30)
   mobile_number       String?             @db.VarChar(15)
   is_deleted          Boolean             @default(false)
   is_active           Boolean             @default(true)
@@ -41,12 +19,13 @@ model teachers {
   updated_at          DateTime            @default(now()) @updatedAt @db.Timestamp(0)
   need_password_reset Boolean
   school_id           Int
-  school              schools             @relation(fields: [school_id], references: [id])
-  standards           teacher_standards[]
+  teacherId           String              @db.VarChar(30)
   students            students[]
+  standards           teacher_standards[]
+  school              schools             @relation(fields: [school_id], references: [id])
 
-  // @@unique([email, school_id, is_deleted, is_active], name: "teacherUniqueIdentifier")
   @@unique([email, school_id, teacherId], name: "teacherUniqueIdentifiers")
+  @@index([school_id], map: "teachers_school_id_fkey")
 }
 
 model admins {
@@ -63,6 +42,7 @@ model admins {
   school       schools  @relation(fields: [school_id], references: [id])
 
   @@unique([email, school_id], name: "adminUniqueIdentifier")
+  @@index([school_id], map: "admins_school_id_fkey")
 }
 
 model students {
@@ -79,31 +59,32 @@ model students {
   is_deleted              Boolean         @default(false)
   is_active               Boolean         @default(true)
   academic_year_id        Int?
-  // parent_id               Int?
   standard_id             Int?
   teacher_id              Int?
   created_at              DateTime        @default(now()) @db.Timestamp(0)
   updated_at              DateTime        @default(now()) @updatedAt @db.Timestamp(0)
   school_id               Int
-  // parent           parents?        @relation(fields: [parent_id], references: [id], onDelete: SetNull)
-  standard                standards?      @relation(fields: [standard_id], references: [id], onDelete: SetNull)
-  teacher                 teachers?       @relation(fields: [teacher_id], references: [id], onDelete: SetNull)
-  school                  schools         @relation(fields: [school_id], references: [id])
-  academic_year           academic_years? @relation(fields: [academic_year_id], references: [id])
   fees_details            fees_details[]
+  academic_year           academic_years? @relation(fields: [academic_year_id], references: [id])
+  school                  schools         @relation(fields: [school_id], references: [id])
+  standard                standards?      @relation(fields: [standard_id], references: [id])
+  teacher                 teachers?       @relation(fields: [teacher_id], references: [id])
 
   @@unique([admission_number, school_id], name: "studentSchoolIdentifier")
+  @@index([academic_year_id], map: "students_academic_year_id_fkey")
+  @@index([school_id], map: "students_school_id_fkey")
+  @@index([standard_id], map: "students_standard_id_fkey")
+  @@index([teacher_id], map: "students_teacher_id_fkey")
 }
 
 model fees_details {
   id                Int                @id @default(autoincrement())
   standard_id       Int
   student_id        Int
-  // parent_id         Int
   term              Int
   academic_year_id  Int?
   due_date          String
-  payed_through     String?            @db.VarChar(50) //Online, Offline
+  payed_through     String?            @db.VarChar(50)
   transaction_id    String?            @unique @db.VarChar(64)
   sc_fees           Float
   is_deleted        Boolean            @default(false)
@@ -113,14 +94,17 @@ model fees_details {
   created_at        DateTime           @default(now()) @db.Timestamp(0)
   updated_at        DateTime           @default(now()) @updatedAt @db.Timestamp(0)
   school_id         Int
-  student           students           @relation(fields: [student_id], references: [id])
-  standard          standards          @relation(fields: [standard_id], references: [id])
-  // parent            parents            @relation(fields: [parent_id], references: [id])
-  school            schools            @relation(fields: [school_id], references: [id])
+  total_payable     Float
   academic_year     academic_years?    @relation(fields: [academic_year_id], references: [id])
+  school            schools            @relation(fields: [school_id], references: [id])
+  standard          standards          @relation(fields: [standard_id], references: [id])
+  student           students           @relation(fields: [student_id], references: [id])
   fees_transactions fees_transaction[]
 
   @@unique([academic_year_id, term, student_id, school_id], name: "studentFeesUniqueIndex")
+  @@index([school_id], map: "fees_details_school_id_fkey")
+  @@index([standard_id], map: "fees_details_standard_id_fkey")
+  @@index([student_id], map: "fees_details_student_id_fkey")
 }
 
 model fees_transaction {
@@ -131,10 +115,6 @@ model fees_transaction {
   bank_transaction_id       String?      @db.VarChar(50)
   pg_authorization_code     String?      @db.VarChar(50)
   client_transaction_id     String?      @db.VarChar(50)
-  order_id                  String?
-  wallet_provider           String?
-  payment_id                String?
-  pg_gateway                String?
   arn_id                    String?      @db.VarChar(50)
   bank_id                   String?      @db.VarChar(50)
   fee_detail_id             Int
@@ -147,8 +127,15 @@ model fees_transaction {
   created_at                DateTime     @default(now()) @db.Timestamp(0)
   updated_at                DateTime     @default(now()) @updatedAt @db.Timestamp(0)
   school_id                 Int
+  order_id                  String?
+  payment_id                String?
+  pg_gateway                String?
+  wallet_provider           String?
   fees_detail               fees_details @relation(fields: [fee_detail_id], references: [id])
   school                    schools      @relation(fields: [school_id], references: [id])
+
+  @@index([fee_detail_id], map: "fees_transaction_fee_detail_id_fkey")
+  @@index([school_id], map: "fees_transaction_school_id_fkey")
 }
 
 model standards {
@@ -160,12 +147,13 @@ model standards {
   is_active         Boolean            @default(true)
   created_at        DateTime           @default(now()) @db.Timestamp(0)
   updated_at        DateTime           @default(now()) @updatedAt @db.Timestamp(0)
-  school            schools            @relation(fields: [school_id], references: [id])
-  teacher_standards teacher_standards?
-  students          students[]
   fees_details      fees_details[]
+  school            schools            @relation(fields: [school_id], references: [id])
+  students          students[]
+  teacher_standards teacher_standards?
 
   @@unique([section, standard, school_id], name: "standardsUniqueConstrain")
+  @@index([school_id], map: "standards_school_id_fkey")
 }
 
 model teacher_standards {
@@ -177,12 +165,14 @@ model teacher_standards {
   school_id   Int
   created_at  DateTime   @default(now()) @db.Timestamp(0)
   updated_at  DateTime   @default(now()) @updatedAt @db.Timestamp(0)
+  school      schools    @relation(fields: [school_id], references: [id])
   standard    standards? @relation(fields: [standard_id], references: [id])
   teacher     teachers   @relation(fields: [teacher_id], references: [id])
-  school      schools    @relation(fields: [school_id], references: [id])
 
   @@unique([standard_id, teacher_id, school_id], name: "teacherStandardUniqueIdentifiers")
   @@unique([standard_id, school_id], name: "teacherSchoolIdentifiers")
+  @@index([school_id], map: "teacher_standards_school_id_fkey")
+  @@index([teacher_id], map: "teacher_standards_teacher_id_fkey")
 }
 
 model academic_years {
@@ -201,6 +191,7 @@ model academic_years {
   students            students[]
 
   @@unique([academic_year_from, academic_year_to, school_id, academic_month_from, academic_month_to], name: "acdyUniqueIdentifier")
+  @@index([school_id], map: "academic_years_school_id_fkey")
 }
 
 model schools {
@@ -218,17 +209,19 @@ model schools {
   pincode                   String              @db.VarChar(10)
   created_at                DateTime            @default(now()) @db.Timestamp(0)
   updated_at                DateTime            @default(now()) @updatedAt @db.Timestamp(0)
-  state                     states              @relation(fields: [state_id], references: [id])
-  country                   countries           @relation(fields: [country_id], references: [id])
-  // parents           parents[]
-  teachers                  teachers[]
+  academic_years            academic_years[]
   admins                    admins[]
-  students                  students[]
-  standards                 standards[]
-  teacher_standards         teacher_standards[]
   fees_details              fees_details[]
   fees_transactions         fees_transaction[]
-  academic_years            academic_years[]
+  country                   countries           @relation(fields: [country_id], references: [id])
+  state                     states              @relation(fields: [state_id], references: [id])
+  standards                 standards[]
+  students                  students[]
+  teacher_standards         teacher_standards[]
+  teachers                  teachers[]
+
+  @@index([country_id], map: "schools_country_id_fkey")
+  @@index([state_id], map: "schools_state_id_fkey")
 }
 
 model states {
@@ -239,8 +232,10 @@ model states {
   is_active  Boolean   @default(true)
   tin        String    @unique
   country_id Int
-  country    countries @relation(fields: [country_id], references: [id])
   schools    schools[]
+  country    countries @relation(fields: [country_id], references: [id])
+
+  @@index([country_id], map: "states_country_id_fkey")
 }
 
 model countries {
@@ -253,6 +248,6 @@ model countries {
   currency_code        String    @unique
   currency_symbol      String    @unique
   currency_symbol_text String
-  states               states[]
   schools              schools[]
+  states               states[]
 }

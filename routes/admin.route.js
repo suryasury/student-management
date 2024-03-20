@@ -143,5 +143,10 @@ router.get(
   "/download/csv/master/template",
   adminController.downloadMasterTemplate
 );
+router.get(
+  "/dashboard/metrics/overview",
+  verifyAccessToken,
+  adminController.dashBoardMerticsOverview
+);
 
 module.exports = router;

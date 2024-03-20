@@ -363,15 +363,26 @@ exports.resetPassword = async (req, res) => {
 
 exports.createRazorpayOrder = async (req, res) => {
   try {
-    let feesId = parseInt(req.params.feesId);
+    let feesIds = req.body.feesIds;
 
-    let feesDetails = await prisma.fees_details.findUnique({
+    let totalFees = await prisma.fees_details.aggregate({
       where: {
-        id: feesId,
+        id: {
+          in: feesIds,
+        },
+      },
+      _sum: {
+        total_payable: true,
       },
     });
 
-    let totalOrderAmount = feesDetails.total_amount + feesDetails.sc_fees;
+    let totalOrderAmount = totalFees._sum.total_payable;
+
+    let notes = {};
+
+    feesIds.forEach((id) => {
+      notes[`fees_${id}`] = id;
+    });
 
     const options = {
       amount: totalOrderAmount * 100,
@@ -379,9 +390,7 @@ exports.createRazorpayOrder = async (req, res) => {
       receipt: `R_${Date.now().toString()}`,
       payment_capture: 1,
       partial_payment: false,
-      notes: {
-        requestFor: feesDetails.id,
-      },
+      notes: notes,
     };
 
     let orderDetails = await razorpayInstance.orders.create(options);
@@ -409,7 +418,7 @@ exports.createRazorpayOrder = async (req, res) => {
 
 exports.verifyPayment = async (req, res) => {
   try {
-    let feesId = parseInt(req.params.feesId);
+    let feesIds = req.body.feesIds;
     let paymentResponse = req.body.razorPayResponse;
     let razorPayOrderId = req.body.orderId;
     const shasum = crypto.createHmac("sha256", process.env.RAZORPAY_SECRET);
@@ -427,36 +436,49 @@ exports.verifyPayment = async (req, res) => {
       );
 
       if (successResponse.length > 0) {
-        let feesDetails = await prisma.fees_details.update({
-          where: {
-            id: feesId,
-          },
-          data: {
-            is_paid: true,
-            payed_through: "Online",
-          },
-        });
-        let feesTransactions = await prisma.fees_transaction.findFirst({
-          where: {
-            fee_detail_id: feesDetails.id,
-            school_id: feesDetails.school_id,
-          },
-        });
-        if (!feesTransactions) {
-          await prisma.fees_transaction.create({
-            data: {
-              fee_detail_id: feesId,
-              amount_paid: successResponse[0].amount / 100,
-              transaction_date: new Date(),
-              payment_mode: successResponse[0].method.toUpperCase(),
-              school_id: feesDetails.school_id,
-              pg_gateway: "RAZORPAY",
-              order_id: successResponse[0].order_id,
-              payment_id: successResponse[0].id,
-              wallet_provider: (successResponse[0].wallet || "").toUpperCase(),
-            },
-          });
-        }
+        await Promise.allSettled(
+          feesIds.map((id) => {
+            return new Promise(async (resolve, reject) => {
+              try {
+                let feesDetails = await prisma.fees_details.update({
+                  where: {
+                    id,
+                  },
+                  data: {
+                    is_paid: true,
+                    payed_through: "Online",
+                  },
+                });
+                let feesTransactions = await prisma.fees_transaction.findFirst({
+                  where: {
+                    fee_detail_id: feesDetails.id,
+                    school_id: feesDetails.school_id,
+                  },
+                });
+                if (!feesTransactions) {
+                  await prisma.fees_transaction.create({
+                    data: {
+                      fee_detail_id: id,
+                      amount_paid: feesDetails.total_payable,
+                      transaction_date: new Date(),
+                      payment_mode: successResponse[0].method.toUpperCase(),
+                      school_id: feesDetails.school_id,
+                      pg_gateway: "RAZORPAY",
+                      order_id: successResponse[0].order_id,
+                      payment_id: successResponse[0].id,
+                      wallet_provider: (
+                        successResponse[0].wallet || ""
+                      ).toUpperCase(),
+                    },
+                  });
+                }
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            });
+          })
+        );
       } else {
         return res.status(400).send({
           success: true,
@@ -476,6 +498,7 @@ exports.verifyPayment = async (req, res) => {
       data: {},
     });
   } catch (err) {
+    console.log("parent", err);
     error(err, res);
   }
 };

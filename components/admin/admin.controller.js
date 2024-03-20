@@ -818,6 +818,7 @@ exports.updateFeesDetails = async (req, res) => {
       data: {
         total_amount: feesDetails.total_amount,
         sc_fees: feesDetails.sc_fees,
+        total_payable: feesDetails.total_amount + feesDetails.sc_fees,
         due_date: feesDetails.due_date,
       },
     });
@@ -874,6 +875,7 @@ exports.createFeesDetails = async (req, res) => {
         total_amount: feesDetails.total_amount,
         is_paid: feesDetails.is_paid,
         sc_fees: feesDetails.sc_fees,
+        total_payable: feesDetails.total_amount + feesDetails.sc_fees,
         due_date: feesDetails.due_date,
         student: {
           connect: { id: feesDetails.id },
@@ -1034,6 +1036,7 @@ exports.createStudent = async (req, res) => {
         is_paid: false,
         sc_fees: studentData.termOneSCFees,
         due_date: studentData.termOneDueDate,
+        total_payable: studentData.termOneFees + studentData.termOneSCFees,
       });
     }
     if (studentData.termTwoFees) {
@@ -1043,6 +1046,7 @@ exports.createStudent = async (req, res) => {
         is_paid: false,
         sc_fees: studentData.termTwoSCFees,
         due_date: studentData.termTwoDueDate,
+        total_payable: studentData.termTwoFees + studentData.termTwoSCFees,
       });
     }
     if (studentData.termThreeFees) {
@@ -1052,6 +1056,7 @@ exports.createStudent = async (req, res) => {
         is_paid: false,
         sc_fees: studentData.termThreeSCFees,
         due_date: studentData.termThreeDueDate,
+        total_payable: studentData.termThreeFees + studentData.termThreeSCFees,
       });
     }
 
@@ -1241,6 +1246,9 @@ exports.getAcademicYearList = async (req, res) => {
       where: {
         is_active: true,
         is_deleted: false,
+      },
+      orderBy: {
+        created_at: "desc",
       },
     });
     res.status(httpStatus.OK).send({
@@ -1434,8 +1442,7 @@ exports.recordOfflineFees = async (req, res) => {
         fee_detail_id: feedDetails.id,
         transaction_date: new Date(),
         utr_number: recordedFees.referenceNumber,
-        amount_paid:
-          feedDetails.total_amount + Number(feedDetails.sc_fees || 0),
+        amount_paid: feedDetails.total_payable,
       },
     });
     res.status(httpStatus.OK).send({
@@ -2106,6 +2113,8 @@ exports.masterUploadStudents = async (req, res) => {
                       termOne.total_amount = parseInt(row["term-1-fees"]);
                       termOne.term = 1;
                       termOne.sc_fees = parseInt(row["term-1-sc"]);
+                      termOne.total_payable =
+                        termOne.total_amount + termOne.sc_fees;
                       if (row["term-1-dueDate"]) {
                         let [date, month, year] =
                           row["term-1-dueDate"].split("/");
@@ -2116,6 +2125,8 @@ exports.masterUploadStudents = async (req, res) => {
                       termTwo.total_amount = parseInt(row["term-2-fees"]);
                       termTwo.term = 2;
                       termTwo.sc_fees = parseInt(row["term-2-sc"]) || 0;
+                      termTwo.total_payable =
+                        termTwo.total_amount + termTwo.sc_fees;
                       if (row["term-2-dueDate"]) {
                         let [date, month, year] =
                           row["term-2-dueDate"].split("/");
@@ -2126,6 +2137,8 @@ exports.masterUploadStudents = async (req, res) => {
                       termThree.total_amount = parseInt(row["term-3-fees"]);
                       termThree.term = 3;
                       termThree.sc_fees = parseInt(row["term-3-sc"]) || 0;
+                      termThree.total_payable =
+                        termThree.total_amount + termThree.sc_fees;
                       if (row["term-3-dueDate"]) {
                         let [date, month, year] =
                           row["term-3-dueDate"].split("/");
@@ -2428,39 +2441,52 @@ exports.paymentWebHooks = async (req, res) => {
       if (event === "payment.captured") {
         let paymentResponse = paymentDetails.payload.payment.entity;
 
-        let feesId = parseInt(paymentResponse.notes.requestFor);
+        let notesObj = paymentResponse.notes;
 
-        let feesDetails = await prisma.fees_details.update({
-          where: {
-            id: feesId,
-          },
-          data: {
-            is_paid: true,
-            payed_through: "Online",
-          },
-        });
-
-        let feesTransactions = await prisma.fees_transaction.findFirst({
-          where: {
-            fee_detail_id: feesDetails.id,
-            school_id: feesDetails.school_id,
-          },
-        });
-        if (!feesTransactions) {
-          await prisma.fees_transaction.create({
-            data: {
-              fee_detail_id: feesId,
-              amount_paid: paymentResponse.amount / 100,
-              transaction_date: new Date(),
-              payment_mode: paymentResponse.method.toUpperCase(),
-              wallet_provider: (paymentResponse.wallet || "").toUpperCase(),
-              school_id: feesDetails.school_id,
-              pg_gateway: "RAZORPAY",
-              order_id: paymentResponse.order_id,
-              payment_id: paymentResponse.id,
-            },
-          });
-        }
+        let feesIds = Object.values(notesObj);
+        await Promise.allSettled(
+          feesIds.map((id) => {
+            return new Promise(async (resolve, reject) => {
+              try {
+                let feesDetails = await prisma.fees_details.update({
+                  where: {
+                    id,
+                  },
+                  data: {
+                    is_paid: true,
+                    payed_through: "Online",
+                  },
+                });
+                let feesTransactions = await prisma.fees_transaction.findFirst({
+                  where: {
+                    fee_detail_id: feesDetails.id,
+                    school_id: feesDetails.school_id,
+                  },
+                });
+                if (!feesTransactions) {
+                  await prisma.fees_transaction.create({
+                    data: {
+                      fee_detail_id: id,
+                      amount_paid: feesDetails.total_payable,
+                      transaction_date: new Date(),
+                      payment_mode: paymentResponse.method.toUpperCase(),
+                      wallet_provider: (
+                        paymentResponse.wallet || ""
+                      ).toUpperCase(),
+                      school_id: feesDetails.school_id,
+                      pg_gateway: "RAZORPAY",
+                      order_id: paymentResponse.order_id,
+                      payment_id: paymentResponse.id,
+                    },
+                  });
+                }
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            });
+          })
+        );
       }
       return res.status(200).send({
         success: true,
@@ -2497,6 +2523,71 @@ exports.downloadMasterTemplate = async (req, res) => {
       message: "File downloaded successfully.",
       success: true,
       data: filePath,
+    });
+  } catch (err) {
+    console.log("webhooks", err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: err?.message || err.message,
+      success: false,
+      data: {},
+      error: err,
+    });
+  }
+};
+
+exports.dashBoardMerticsOverview = async (req, res) => {
+  try {
+    let schoolId = parseInt(req.user.schoolId);
+    let academicYear = req.query.academicYear;
+    let term = req.query.term;
+    let section = req.query.section;
+    let whereClause = {
+      school_id: schoolId,
+    };
+    if (academicYear) {
+      whereClause.academic_year_id = parseInt(academicYear);
+    }
+    if (term) {
+      whereClause.term = parseInt(term);
+    }
+    if (section) {
+      whereClause.standard_id = parseInt(section);
+    }
+    let [totalFees, totalFeesCollected, totalFeesPending] =
+      await prisma.$transaction([
+        prisma.fees_details.aggregate({
+          where: whereClause,
+          _sum: {
+            total_payable: true,
+          },
+        }),
+        prisma.fees_details.aggregate({
+          where: {
+            is_paid: true,
+            ...whereClause,
+          },
+          _sum: {
+            total_payable: true,
+          },
+        }),
+        prisma.fees_details.aggregate({
+          where: {
+            is_paid: false,
+            ...whereClause,
+          },
+          _sum: {
+            total_payable: true,
+          },
+        }),
+      ]);
+    res.status(httpStatus.OK).send({
+      message: "Metrics fetched successfully",
+      success: true,
+      data: {
+        totalFees: totalFees._sum.total_payable || 0,
+        totalFeesCollected: totalFeesCollected._sum.total_payable || 0,
+        totalFeesPending: totalFeesPending._sum.total_payable || 0,
+      },
     });
   } catch (err) {
     console.log(err);
