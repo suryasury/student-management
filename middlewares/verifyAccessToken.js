@@ -18,7 +18,7 @@ module.exports = async (req, res, next) => {
             message: "Token should be Bearer",
             error: {},
           },
-          res
+          res,
         );
       }
       if (tokenArr[1]) {
@@ -30,7 +30,7 @@ module.exports = async (req, res, next) => {
             message: "Token missing in the header",
             error: {},
           },
-          res
+          res,
         );
       }
     }
@@ -71,7 +71,7 @@ module.exports = async (req, res, next) => {
             message: "User not found or invalid user",
             error: {},
           },
-          res
+          res,
         );
       }
     } else {
@@ -81,7 +81,7 @@ module.exports = async (req, res, next) => {
           message: "Session expired. Please login again",
           error: jwtData.error,
         },
-        res
+        res,
       );
     }
   } catch (err) {
@@ -92,7 +92,7 @@ module.exports = async (req, res, next) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };

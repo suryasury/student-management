@@ -40,7 +40,7 @@ exports.login = async (req, res) => {
       }
       let isValidPassword = validatePassword(
         password.trim().toString(),
-        userDetails.password
+        userDetails.password,
       );
       if (isValidPassword) {
         let jwtToken = generateAccesToken({
@@ -198,7 +198,7 @@ exports.forgotPassword = async (req, res) => {
     }
     let template = fs.readFileSync(
       "emailTemplates/forgotPassword.html",
-      "utf-8"
+      "utf-8",
     );
     let token = generateAccesToken(
       {
@@ -208,13 +208,13 @@ exports.forgotPassword = async (req, res) => {
         schoolId: userDetails.school_id,
         admissionNumber: userDetails.admission_number,
       },
-      "30m"
+      "30m",
     );
     let html = template
       .replace("{{name}}", userDetails.name)
       .replace(
         /{{resetLink}}/g,
-        process.env.RESET_PASSWORD_FRONTEND_HOST_PARENT + token
+        process.env.RESET_PASSWORD_FRONTEND_HOST_PARENT + token,
       );
     await emailService.sendEmail({
       from: process.env.SMTP_EMAIL,
@@ -428,11 +428,11 @@ exports.verifyPayment = async (req, res) => {
 
     if (paymentResponse.razorpay_signature === digest) {
       let orderDetails = await razorpayInstance.orders.fetchPayments(
-        razorPayOrderId
+        razorPayOrderId,
       );
 
       let successResponse = orderDetails.items.filter(
-        (payment) => payment.captured
+        (payment) => payment.captured,
       );
 
       if (successResponse.length > 0) {
@@ -477,7 +477,7 @@ exports.verifyPayment = async (req, res) => {
                 reject(err);
               }
             });
-          })
+          }),
         );
       } else {
         return res.status(400).send({

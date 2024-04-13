@@ -4,7 +4,7 @@ const decryptPassword = (encryptedPassword) => {
   try {
     let passwordBytes = cryptojs.AES.decrypt(
       encryptedPassword,
-      process.env.PASSWORD_ENCRYPT_KEY
+      process.env.PASSWORD_ENCRYPT_KEY,
     );
     return passwordBytes.toString(cryptojs.enc.Utf8);
   } catch (err) {

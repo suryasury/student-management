@@ -7,17 +7,17 @@ router.post("/login", parentsController.login);
 router.get(
   "/student/details",
   verifyAccessToken,
-  parentsController.getStudentDetails
+  parentsController.getStudentDetails,
 );
 router.get(
   "/fees/details",
   verifyAccessToken,
-  parentsController.getFeesDetails
+  parentsController.getFeesDetails,
 );
 router.patch(
   "/password/reset",
   verifyAccessToken,
-  parentsController.resetPasswordWithAuth
+  parentsController.resetPasswordWithAuth,
 );
 router.post("/forgot-password", parentsController.forgotPassword);
 router.patch("/reset-password/:token", parentsController.resetPassword);
@@ -25,6 +25,6 @@ router.post("/initiate/payment", parentsController.createRazorpayOrder);
 router.post(
   "/fees/payment/verify",
   verifyAccessToken,
-  parentsController.verifyPayment
+  parentsController.verifyPayment,
 );
 module.exports = router;

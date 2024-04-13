@@ -176,7 +176,7 @@ exports.deleteStaffDetails = async (req, res) => {
             } catch (err) {
               throw err;
             }
-          })
+          }),
         );
       }
       await prisma.teachers.delete({
@@ -238,7 +238,7 @@ exports.updateStaffDetails = async (req, res) => {
         } catch (err) {
           throw err;
         }
-      })
+      }),
     );
 
     await Promise.all(
@@ -263,7 +263,7 @@ exports.updateStaffDetails = async (req, res) => {
         } catch (err) {
           throw err;
         }
-      })
+      }),
     );
     res.status(httpStatus.OK).send({
       success: true,
@@ -339,7 +339,7 @@ exports.createStaffs = async (req, res) => {
         } catch (err) {
           throw err;
         }
-      })
+      }),
     );
     res.status(httpStatus.OK).send({
       success: true,
@@ -774,7 +774,7 @@ exports.transactionHistoryDownload = async (req, res) => {
         res.setHeader("Content-Type", "text/csv");
         res.setHeader(
           "Content-Disposition",
-          `attachment; filename=${encodeURIComponent(fileName)}`
+          `attachment; filename=${encodeURIComponent(fileName)}`,
         );
 
         fileStream.pipe(res);
@@ -849,7 +849,7 @@ exports.createFeesDetails = async (req, res) => {
     });
     let academicYearDetails = getCurrentAcademicYear(
       schoolDetails.academic_year_start_month,
-      schoolDetails.academic_year_end_month
+      schoolDetails.academic_year_end_month,
     );
 
     let academicYear = await prisma.academic_years.upsert({
@@ -989,7 +989,7 @@ exports.createStudent = async (req, res) => {
     });
     let academicYearDetails = getCurrentAcademicYear(
       schoolDetails.academic_year_start_month,
-      schoolDetails.academic_year_end_month
+      schoolDetails.academic_year_end_month,
     );
 
     let academicYear = await prisma.academic_years.upsert({
@@ -1083,7 +1083,7 @@ exports.createStudent = async (req, res) => {
         } catch (err) {
           throw err;
         }
-      })
+      }),
     );
     res.status(httpStatus.OK).send({
       success: true,
@@ -1240,7 +1240,7 @@ exports.getAdminList = async (req, res) => {
   }
 };
 
-exports.getAcademicYearList = async (req, res) => {
+exports.getAcademicYearList = async (_req, res) => {
   try {
     let result = await prisma.academic_years.findMany({
       where: {
@@ -1460,7 +1460,7 @@ exports.recordOfflineFees = async (req, res) => {
           "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -1474,6 +1474,14 @@ exports.getAllSectionMinified = async (req, res) => {
         is_active: true,
         is_deleted: false,
       },
+      orderBy: [
+        {
+          standard: "asc",
+        },
+        {
+          section: "desc",
+        },
+      ],
     });
     res.status(httpStatus.OK).send({
       message: "Sections fetched successfully",
@@ -1488,7 +1496,7 @@ exports.getAllSectionMinified = async (req, res) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -1524,7 +1532,7 @@ exports.updateStandardTeacher = async (req, res) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -1594,7 +1602,7 @@ exports.getAllSections = async (req, res) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -1632,7 +1640,7 @@ exports.markStudentActive = async (req, res) => {
           "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -1664,7 +1672,7 @@ exports.deleteStudent = async (req, res) => {
           "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -1776,7 +1784,7 @@ exports.getStudentList = async (req, res) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -1952,7 +1960,7 @@ exports.downloadStudentList = async (req, res) => {
         res.setHeader("Content-Type", "text/csv");
         res.setHeader(
           "Content-Disposition",
-          `attachment; filename=${encodeURIComponent(fileName)}`
+          `attachment; filename=${encodeURIComponent(fileName)}`,
         );
 
         fileStream.pipe(res);
@@ -1983,7 +1991,7 @@ exports.downloadStudentList = async (req, res) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -2048,7 +2056,7 @@ exports.masterUploadStudents = async (req, res) => {
                     });
                     let academicYearDetails = getCurrentAcademicYear(
                       schoolDetails.academic_year_start_month,
-                      schoolDetails.academic_year_end_month
+                      schoolDetails.academic_year_end_month,
                     );
                     let academicYear = await prisma.academic_years.upsert({
                       where: {
@@ -2190,14 +2198,14 @@ exports.masterUploadStudents = async (req, res) => {
                             reject(err);
                           }
                         });
-                      })
+                      }),
                     );
                     resolve("success");
                   } catch (err) {
                     reject(err);
                   }
                 });
-              })
+              }),
             );
             return res.status(httpStatus.OK).send({
               success: true,
@@ -2329,7 +2337,7 @@ exports.forgotPassword = async (req, res) => {
     }
     let template = fs.readFileSync(
       "emailTemplates/forgotPassword.html",
-      "utf-8"
+      "utf-8",
     );
     let token = generateAccesToken(
       {
@@ -2338,13 +2346,13 @@ exports.forgotPassword = async (req, res) => {
         userType: "admin",
         schoolId: userDetails.school_id,
       },
-      "30m"
+      "30m",
     );
     let html = template
       .replace("{{name}}", userDetails.name)
       .replace(
         /{{resetLink}}/g,
-        process.env.RESET_PASSWORD_FRONTEND_HOST_ADMIN + token
+        process.env.RESET_PASSWORD_FRONTEND_HOST_ADMIN + token,
       );
     await emailService.sendEmail({
       from: process.env.SMTP_EMAIL,
@@ -2485,7 +2493,7 @@ exports.paymentWebHooks = async (req, res) => {
                 reject(err);
               }
             });
-          })
+          }),
         );
       }
       return res.status(200).send({
@@ -2506,7 +2514,7 @@ exports.paymentWebHooks = async (req, res) => {
   }
 };
 
-exports.downloadMasterTemplate = async (req, res) => {
+exports.downloadMasterTemplate = async (_req, res) => {
   try {
     const filePath = "../emailTemplates/studentMasterDataTemplate.csv";
     res.download(filePath, (err) => {

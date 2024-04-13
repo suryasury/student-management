@@ -67,7 +67,7 @@ exports.login = async (req, res) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -117,7 +117,7 @@ exports.getStaffSections = async (req, res) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -194,7 +194,7 @@ exports.getStaffSectionStudents = async (req, res) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -265,7 +265,7 @@ exports.getUserDetails = async (req, res) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -291,7 +291,7 @@ exports.getSectionDetails = async (req, res) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -337,7 +337,7 @@ exports.getStudentDetails = async (req, res) => {
         message: "Internal server error. Please try again after sometime",
         error: err,
       },
-      res
+      res,
     );
   }
 };
@@ -387,7 +387,7 @@ exports.forgotPassword = async (req, res) => {
     }
     let template = fs.readFileSync(
       "emailTemplates/forgotPassword.html",
-      "utf-8"
+      "utf-8",
     );
     let token = generateAccesToken(
       {
@@ -396,13 +396,13 @@ exports.forgotPassword = async (req, res) => {
         userType: "teacher",
         schoolId: userDetails.school_id,
       },
-      "30m"
+      "30m",
     );
     let html = template
       .replace("{{name}}", userDetails.name)
       .replace(
         /{{resetLink}}/g,
-        process.env.RESET_PASSWORD_FRONTEND_HOST_TEACHER + token
+        process.env.RESET_PASSWORD_FRONTEND_HOST_TEACHER + token,
       );
     await emailService.sendEmail({
       from: process.env.SMTP_EMAIL,

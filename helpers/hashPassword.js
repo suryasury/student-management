@@ -4,7 +4,7 @@ const hashPassword = (password) => {
   try {
     return bcrypt.hashSync(
       password,
-      parseInt(process.env.PASSWORD_SALT_ROUNDS)
+      parseInt(process.env.PASSWORD_SALT_ROUNDS),
     );
   } catch (err) {
     console.log("errpr", err);
