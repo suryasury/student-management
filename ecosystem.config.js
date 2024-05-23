@@ -35,7 +35,7 @@ module.exports = {
         NODE_ENV: "uat",
         PORT: 3050,
         DATABASE_URL:
-          "mysql://surya:Admin@123@localhost:3306/student_management",
+          "mysql://root:password@123@localhost:3306/student_management",
         JWT_SECRET:
           "c52bba2d3021547a9f92dc861a4f0ee44f1d72d6edac093a0ee224290362f6043a27e7b8c459fe02180674ba3f09a1d58f97e19a025ecc983fd75cfd1ac3bf1a",
         PASSWORD_ENCRYPT_KEY:
