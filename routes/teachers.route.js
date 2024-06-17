@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const teachersController = require("../components/teachers/teacher.controller");
+const teachersController = require("../controllers/teachers/teacher.controller");
 const { verifyAccessToken } = require("../middlewares");
 
 router.post("/login", teachersController.login);

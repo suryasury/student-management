@@ -11,11 +11,7 @@ const emailService = require("../../utils/emailService");
 const jwt = require("jsonwebtoken");
 const Razorpay = require("razorpay");
 let crypto = require("crypto");
-
-const razorpayInstance = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_SECRET,
-});
+const { default: axios } = require("axios");
 
 exports.login = async (req, res) => {
   try {
@@ -363,6 +359,11 @@ exports.resetPassword = async (req, res) => {
 
 exports.createRazorpayOrder = async (req, res) => {
   try {
+    const razorpayInstance = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_SECRET,
+    });
+
     let feesIds = req.body.feesIds;
 
     let totalFees = await prisma.fees_details.aggregate({
@@ -405,6 +406,167 @@ exports.createRazorpayOrder = async (req, res) => {
       success: true,
       data: { ...orderDetails, merchantId: process.env.RAZORPAY_KEY_ID },
     });
+  } catch (err) {
+    console.log(err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: err?.message || err.message,
+      success: false,
+      data: {},
+      error: err,
+    });
+  }
+};
+
+exports.createPaymentOrder = async (req, res) => {
+  try {
+    let feesIds = req.body.feesIds;
+    let studentId = req.body.studentId;
+
+    let totalFees = await prisma.fees_details.aggregate({
+      where: {
+        id: {
+          in: feesIds,
+        },
+      },
+      _sum: {
+        total_payable: true,
+      },
+    });
+
+    let studentDetails = await prisma.students.findUnique({
+      where: { id: studentId },
+    });
+
+    let totalOrderAmount = totalFees._sum.total_payable;
+
+    let notes = {};
+
+    feesIds.forEach((id) => {
+      notes[`fees_${id}`] = id;
+    });
+
+    const options = {
+      orderId: `${Date.now().toString()}`,
+      orderInfo: "Fees payment",
+      amount: totalOrderAmount * 100,
+      currency: "INR",
+      udf: feesIds.map(String),
+      customer: {
+        name: studentDetails.father_name,
+        emailId: studentDetails.email,
+        phone: studentDetails.primary_mobile_no,
+      },
+      webhook: {
+        url: `${process.env.BACKEND_BASE_URL}/api/admin/fees/payment/lyra/webhook`,
+      },
+      return: {
+        method: "GET",
+        url: process.env.PARENT_FRONT_END_URL,
+        timeout: 600,
+      },
+    };
+    var base64String = Buffer.from(
+      `${process.env.LYRA_SHOP_ID}:${process.env.LYRA_API_KEY}`,
+    ).toString("base64");
+
+    let response = await axios.post(
+      `${process.env.LYRA_BASE_URL}/pg/rest/v1/charge`,
+      options,
+      {
+        headers: {
+          Authorization: `Basic ${base64String}`,
+        },
+      },
+    );
+    response = response.data;
+
+    if (!response) {
+      throw {
+        message: "Could not initiate payment. Please try again.",
+      };
+    }
+    res.status(httpStatus.OK).send({
+      message: "Order created successfully.",
+      success: true,
+      data: response,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).send({
+      message: err?.message || err.message,
+      success: false,
+      data: {},
+      error: err,
+    });
+  }
+};
+
+exports.checkPaymentStatus = async (req, res) => {
+  try {
+    let orderId = req.params.orderId;
+    // let schoolId = req.user.school_id;
+
+    // let totalFees = await prisma.fees_details.aggregate({
+    //   where: {
+    //     id: {
+    //       in: feesIds,
+    //     },
+    //   },
+    //   _sum: {
+    //     total_payable: true,
+    //   },
+    // });
+
+    // let studentDetails = await prisma.students.findUnique({
+    //   where: { id: studentId },
+    // });
+
+    // let totalOrderAmount = totalFees._sum.total_payable;
+
+    // let notes = {};
+
+    // feesIds.forEach((id) => {
+    //   notes[`fees_${id}`] = id;
+    // });
+
+    var base64String = Buffer.from(
+      `${process.env.LYRA_SHOP_ID}:${process.env.LYRA_API_KEY}`,
+    ).toString("base64");
+
+    let response = await axios.get(
+      `${process.env.LYRA_BASE_URL}/pg/rest/v1/charge/${orderId}`,
+      {
+        headers: {
+          Authorization: `Basic ${base64String}`,
+        },
+      },
+    );
+    response = response.data;
+
+    if (!response) {
+      throw {
+        message: "Could not check payment statue. Please try again.",
+      };
+    }
+    if (response.status === "PAID") {
+      return res.status(httpStatus.OK).send({
+        message: "Payment captured successfully",
+        success: true,
+        data: { isPaymentFailed: false },
+      });
+    } else if (response.status === "DROPPED") {
+      return res.status(httpStatus.OK).send({
+        message: "Payment failed. Please try again",
+        success: false,
+        data: { isPaymentFailed: true },
+      });
+    } else {
+      return res.status(httpStatus.OK).send({
+        message: "Payment not captured. please try again.",
+        success: false,
+        data: { isPaymentFailed: false },
+      });
+    }
   } catch (err) {
     console.log(err);
     res.status(httpStatus.INTERNAL_SERVER_ERROR).send({

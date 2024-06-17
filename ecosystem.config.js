@@ -30,6 +30,12 @@ module.exports = {
         RAZORPAY_KEY_ID: "rzp_live_CEoPlK1BTopDBr",
         RP_WEBHOOK_SECRET: "a66d96be-9033-4d9d-8714-ab7de11c5b38",
         RP_MERCHENT_ID: "JVoztnRSq8i1lg",
+        LYRA_SHOP_ID: "51634323",
+        LYRA_API_KEY:
+          "prodpassword_UjRSBf97i66kMujgDfp8dr2aWgmjvZjDWIOkraODPpag2",
+        LYRA_BASE_URL: "https://api.in.lyra.com",
+        PARENT_FRONT_END_URL: "https://parent.vlmhss.edu.in/dashboard",
+        BACKEND_BASE_URL: "https://api.vlmhss.edu.in",
       },
       env_uat: {
         NODE_ENV: "uat",
@@ -58,6 +64,13 @@ module.exports = {
         RAZORPAY_KEY_ID: "rzp_test_chuP0tLcsp9D5v",
         RP_WEBHOOK_SECRET: "b008613e-007f-4a90-beee-7899d38b4efb",
         RP_MERCHENT_ID: "JVoztnRSq8i1lg",
+        LYRA_SHOP_ID: "51634323",
+        LYRA_API_KEY:
+          "testpassword_QEg6Xx30HqEZNlKSZ4wBE8Oh5d1TG1atIBY6gMIcAZJDX",
+        LYRA_BASE_URL: "https://api.in.lyra.com",
+        PARENT_FRONT_END_URL: "http://localhost:3000/dashboard",
+        BACKEND_BASE_URL:
+          "https://f36a-2409-40f4-29-63c1-8832-8c23-401c-fa39.ngrok-free.app",
       },
     },
   ],

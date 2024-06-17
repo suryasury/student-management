@@ -1,8 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const adminController = require("../components/admin/admin.controller");
+const adminController = require("../controllers/admin/admin.controller");
 const { verifyAccessToken } = require("../middlewares");
 const multer = require("multer");
+const webhooksController = require("../controllers/admin/webhooks.controller");
 const multerUpload = multer();
 
 router.post("/login", adminController.login);
@@ -139,6 +140,10 @@ router.get(
 );
 
 router.post("/fees/payment/webhook", adminController.paymentWebHooks);
+router.post(
+  "/fees/payment/lyra/webhook",
+  webhooksController.paymentWebHooksLyra,
+);
 router.get(
   "/download/csv/master/template",
   adminController.downloadMasterTemplate,
