@@ -1425,7 +1425,7 @@ exports.recordOfflineFees = async (req, res) => {
   try {
     let recordedFees = req.body;
     let schoolId = parseInt(req.user.schoolId);
-    let feedDetails = await prisma.fees_details.update({
+    let feesDetails = await prisma.fees_details.update({
       where: {
         id: parseInt(recordedFees.feesDetailsId),
       },
@@ -1439,10 +1439,10 @@ exports.recordOfflineFees = async (req, res) => {
         school_id: schoolId,
         payment_mode: recordedFees.paymentMode,
         transaction_id: recordedFees.referenceNumber,
-        fee_detail_id: feedDetails.id,
-        transaction_date: new Date(),
+        fee_detail_id: feesDetails.id,
+        transaction_date: recordedFees.paymentDate,
         utr_number: recordedFees.referenceNumber,
-        amount_paid: feedDetails.total_payable,
+        amount_paid: feesDetails.total_payable,
       },
     });
     res.status(httpStatus.OK).send({
