@@ -441,6 +441,7 @@ exports.transactionHistory = async (req, res) => {
       ? parseInt(req.query.academicYear)
       : "";
     let searchFilter = req.query.search || "";
+    let payedVia = req.query.payedVia || "";
     let fromDate = req.query.from || "";
     let toDate = req.query.to || "";
     let limit = parseInt(req.query.limit || 10);
@@ -470,6 +471,12 @@ exports.transactionHistory = async (req, res) => {
       whereCondition.fees_detail = {
         ...whereCondition?.fees_detail,
         standard_id: sectionId,
+      };
+    }
+    if (payedVia) {
+      whereCondition.fees_detail = {
+        ...whereCondition?.fees_detail,
+        payed_through: payedVia,
       };
     }
 
@@ -614,9 +621,9 @@ exports.transactionHistoryDownload = async (req, res) => {
     });
 
     if (feesTransactions.length === 0) {
-      return res.status(httpStatus.CONFLICT).send({
+      return res.status(httpStatus.NOT_FOUND).send({
         success: false,
-        message: "No transaction found for selected filter to download",
+        message: "No transaction found for selected filter",
         data: {},
       });
     }
@@ -1732,6 +1739,11 @@ exports.getStudentList = async (req, res) => {
         },
         {
           name: {
+            contains: searchFilter,
+          },
+        },
+        {
+          primary_mobile_no: {
             contains: searchFilter,
           },
         },
