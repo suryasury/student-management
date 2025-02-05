@@ -73,7 +73,7 @@ module.exports = {
           "https://f36a-2409-40f4-29-63c1-8832-8c23-401c-fa39.ngrok-free.app",
       },
       env_dev: {
-        NODE_ENV: "uat",
+        NODE_ENV: "dev",
         PORT: 3050,
         DATABASE_URL:
           "mysql://root:password@123@localhost:3306/student_management",
